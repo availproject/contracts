@@ -12,6 +12,8 @@ contract WrappedAvail is ERC20Permit {
     error AlreadyMinted();
     error InvalidProof();
 
+    event Send(bytes destination, uint256 amount);
+
     constructor(ISuccinctBridge _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
         bridge = _bridge;
     }
@@ -28,7 +30,9 @@ contract WrappedAvail is ERC20Permit {
         _mint(destination, amount);
     }
 
-    function burn(uint256 amount) external {
+    function burn(bytes calldata destination, uint256 amount) external {
+        // TODO: validate destination if possible
         _burn(msg.sender, amount);
+        emit Send(destination, amount);
     }
 }
