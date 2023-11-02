@@ -12,7 +12,7 @@ contract WrappedAvail is ERC20Permit {
     error AlreadyMinted();
     error InvalidProof();
 
-    event Send(bytes destination, uint256 amount);
+    event Send(bytes indexed destination, uint256 indexed amount);
 
     constructor(ISuccinctBridge _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
         bridge = _bridge;
