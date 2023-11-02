@@ -23,6 +23,7 @@ contract WrappedAvail is ERC20Permit {
         if (isMinted[depositHash]) {
             revert AlreadyMinted();
         }
+        // TODO: primitive interface atm
         if (!bridge.verify(proof, depositHash)) {
             revert InvalidProof();
         }
