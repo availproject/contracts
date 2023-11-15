@@ -10,6 +10,7 @@ import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 
 contract AvailBridge is Ownable2Step, Initializable {
     using Merkle for bytes32;
+
     IVectorx public vectorx;
     IWrappedAvail public avail;
     uint64 public constant DOMAIN = 2;
@@ -96,17 +97,7 @@ contract AvailBridge is Ownable2Step, Initializable {
         if (isBridged[leaf]) {
             revert AlreadyBridged();
         }
-        if (
-            !verifyBridgeLeaf(
-                proof,
-                blobRoot,
-                bridgeRoot,
-                leaf,
-                width,
-                index,
-                blockNumber
-            )
-        ) {
+        if (!verifyBridgeLeaf(proof, blobRoot, bridgeRoot, leaf, width, index, blockNumber)) {
             revert InvalidMerkleProof();
         }
         isBridged[leaf] = true;

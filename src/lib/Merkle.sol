@@ -17,18 +17,14 @@ library Merkle {
 
                 for {} 1 {} {
                     let leafSlot := shl(5, and(0x1, index))
-                    if eq(add(index, 1), width) {
-                        leafSlot := 0x20
-                    }
+                    if eq(add(index, 1), width) { leafSlot := 0x20 }
                     mstore(leafSlot, leaf)
                     mstore(xor(leafSlot, 32), calldataload(i))
                     leaf := keccak256(0, 64)
                     index := shr(1, index)
                     i := add(i, 32)
                     width := add(shr(1, sub(width, 1)), 1)
-                    if iszero(lt(i, end)) {
-                        break
-                    }
+                    if iszero(lt(i, end)) { break }
                 }
             }
             // checks if the calculated root matches the expected root

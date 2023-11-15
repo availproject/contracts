@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 
 abstract contract MessageReceiver is IMessageReceiver {
-    address public availBridge; 
+    address public availBridge;
 
     error OnlyAvailBridge();
 
