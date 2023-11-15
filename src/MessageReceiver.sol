@@ -15,5 +15,9 @@ abstract contract MessageReceiver is IMessageReceiver {
         _onAvailMessage(from, data);
     }
 
+    function __MessageReceiver_init(address _availBridge) internal virtual {
+        availBridge = _availBridge;
+    }
+
     function _onAvailMessage(bytes32 from, bytes calldata data) internal virtual;
 }

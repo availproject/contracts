@@ -51,7 +51,7 @@ contract AvailBridge is Ownable2Step, Initializable {
         if (dataRoot == 0x0) {
             revert DataRootEmpty();
         }
-        if (dataRoot != keccak256(abi.encodePacked(blobRoot, bridgeRoot))) {
+        if (dataRoot != keccak256(abi.encode(blobRoot, bridgeRoot))) {
             revert InvalidDataRoot();
         }
         return leaf.checkMembership(blobRoot, proof, width, index);
@@ -70,7 +70,7 @@ contract AvailBridge is Ownable2Step, Initializable {
         if (dataRoot == 0x0) {
             revert DataRootEmpty();
         }
-        if (dataRoot != keccak256(abi.encodePacked(blobRoot, bridgeRoot))) {
+        if (dataRoot != keccak256(abi.encode(blobRoot, bridgeRoot))) {
             revert InvalidDataRoot();
         }
         return leaf.checkMembership(bridgeRoot, proof, width, index);
@@ -93,7 +93,7 @@ contract AvailBridge is Ownable2Step, Initializable {
         if (domain != DOMAIN) {
             revert InvalidDomain();
         }
-        bytes32 leaf = keccak256(abi.encodePacked(from, to, data, value, domain, messageId));
+        bytes32 leaf = keccak256(abi.encode(from, to, data, value, domain, messageId));
         if (isBridged[leaf]) {
             revert AlreadyBridged();
         }
