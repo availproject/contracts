@@ -2,38 +2,32 @@
 pragma solidity ^0.8.22;
 
 import {ERC20, ERC20Permit} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {ISuccinctBridge} from "./interfaces/ISuccinctBridge.sol";
 
 contract WrappedAvail is ERC20Permit {
-    ISuccinctBridge public bridge;
+    address public bridge;
 
-    mapping(bytes32 => bool) isMinted;
-
+    error OnlyBridge();
     error AlreadyMinted();
     error InvalidProof();
 
-    event Send(bytes indexed destination, uint256 indexed amount);
+    event Send(bytes32 indexed destination, uint256 amount);
 
-    constructor(ISuccinctBridge _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
+    constructor(address _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
         bridge = _bridge;
     }
 
-    function mint(address destination, uint256 amount, uint256 depositId, bytes32[] calldata proof) external {
-        bytes32 depositHash = keccak256(abi.encodePacked(destination, amount, depositId));
-        if (isMinted[depositHash]) {
-            revert AlreadyMinted();
+    function mint(address destination, uint256 amount) external returns (bool) {
+        if (msg.sender != bridge) {
+            revert OnlyBridge();
         }
-        // TODO: primitive interface atm
-        if (!bridge.verify(proof, depositHash)) {
-            revert InvalidProof();
-        }
-        isMinted[depositHash] = true;
         _mint(destination, amount);
+        return true;
     }
 
-    function burn(bytes calldata destination, uint256 amount) external {
-        // TODO: validate destination if possible
+    function burn(bytes32 destination, uint256 amount) external returns (bool) {
         _burn(msg.sender, amount);
         emit Send(destination, amount);
+
+        return true;
     }
 }
