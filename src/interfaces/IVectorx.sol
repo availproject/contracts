@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-interface IVectorx {
-    function roots(uint64 blockNumber) external view returns (bytes32 root);
+interface IVectorX {
+    function dataRootCommitments(bytes32 rangeHash) external view returns (bytes32 dataRoot);
 }
