@@ -5,5 +5,5 @@ import {IERC20Permit} from "lib/openzeppelin-contracts/contracts/token/ERC20/ext
 
 interface IWrappedAvail is IERC20Permit {
     function mint(address destination, uint256 amount) external returns (bool);
-    function burn(bytes32 destination, uint256 amount) external returns (bool);
+    function burn(address from, uint256 amount) external returns (bool);
 }
