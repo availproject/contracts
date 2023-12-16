@@ -4,6 +4,8 @@ pragma solidity ^0.8.22;
 import {OwnableUpgradeable, Ownable2StepUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IVectorX} from "./interfaces/IVectorX.sol";
 import {Merkle} from "./lib/Merkle.sol";
 import {IWrappedAvail} from "./interfaces/IWrappedAvail.sol";
@@ -34,6 +36,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     }
 
     using Merkle for bytes32[];
+    using SafeERC20 for IERC20;
 
     uint32 public constant AVAIL_DOMAIN = 1;
     uint32 public constant ETH_DOMAIN = 2;
@@ -43,7 +46,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     uint256 public messageId;
 
     mapping(bytes32 => bool) public isBridged;
-    mapping(bytes32 => bool) public isSent;
+    mapping(uint256 => bytes32) public isSent;
     mapping(bytes32 => address) public tokens;
 
     error ArrayLengthMismatch();
@@ -56,7 +59,6 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     error InvalidDomain();
     error InvalidMessage();
     error InvalidFungibleTokenTransfer();
-    error MintFailed();
     error UnlockFailed();
     error AlreadyBridged();
     error InvalidAssetId();
@@ -81,7 +83,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         vectorx = _vectorx;
     }
 
-    function addTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyOwner {
+    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyOwner {
         if (assetIds.length != tokenAddresses.length) {
             revert ArrayLengthMismatch();
         }
@@ -186,7 +188,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
             "",
             uint64(id)
         );
-        isSent[keccak256(abi.encode(message))] = true;
+        isSent[id] = keccak256(abi.encode(message));
         avail.burn(msg.sender, amount);
 
         emit MessageSent(msg.sender, recipient, id);
@@ -204,7 +206,29 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
             "",
             uint64(id)
         );
-        isSent[keccak256(abi.encode(message))] = true;
+        isSent[id] = keccak256(abi.encode(message));
+
+        emit MessageSent(msg.sender, recipient, id);
+    }
+
+    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external {
+        address token = tokens[assetId];
+        if (token == address(0)) {
+            revert InvalidAssetId();
+        }
+        uint256 id = messageId++;
+        Message memory message = Message(
+            0x02,
+            bytes32(bytes20(msg.sender)),
+            recipient,
+            AVAIL_DOMAIN,
+            assetId,
+            amount,
+            "",
+            uint64(id)
+        );
+        isSent[id] = keccak256(abi.encode(message));
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         emit MessageSent(msg.sender, recipient, id);
     }
