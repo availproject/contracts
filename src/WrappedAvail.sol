@@ -12,19 +12,18 @@ contract WrappedAvail is ERC20Permit {
         bridge = _bridge;
     }
 
-    function mint(address destination, uint256 amount) external returns (bool) {
+    modifier onlyBridge() {
         if (msg.sender != bridge) {
             revert OnlyBridge();
         }
-        _mint(destination, amount);
-        return true;
+        _;
     }
 
-    function burn(address from, uint256 amount) external returns (bool) {
-        if (msg.sender != bridge) {
-            revert OnlyBridge();
-        }
+    function mint(address destination, uint256 amount) external onlyBridge {
+        _mint(destination, amount);
+    }
+
+    function burn(address from, uint256 amount) external onlyBridge {
         _burn(from, amount);
-        return true;
     }
 }

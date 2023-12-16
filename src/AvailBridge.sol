@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.22;
 
-import {Ownable, Ownable2Step} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import {OwnableUpgradeable, Ownable2StepUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IVectorX} from "./interfaces/IVectorX.sol";
 import {Merkle} from "./lib/Merkle.sol";
 import {IWrappedAvail} from "./interfaces/IWrappedAvail.sol";
-import {Initializable} from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 
-contract AvailBridge is Ownable2Step, Initializable {
+contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     struct Message {
         bytes1 messageType;
         bytes32 from;
@@ -45,6 +46,7 @@ contract AvailBridge is Ownable2Step, Initializable {
     mapping(bytes32 => bool) public isSent;
     mapping(bytes32 => address) public tokens;
 
+    error ArrayLengthMismatch();
     error InvalidDataRootProof();
     error DataRootCommitmentEmpty();
     error BlobRootEmpty();
@@ -62,12 +64,17 @@ contract AvailBridge is Ownable2Step, Initializable {
     event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
     event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
 
-    constructor(address governance, IVectorX _vectorx) Ownable(governance) {
-        vectorx = _vectorx;
+    modifier onlyEthDomain(uint32 domain) {
+        if (domain != ETH_DOMAIN) {
+            revert InvalidDomain();
+        }
+        _;
     }
 
-    function initialize(IWrappedAvail _avail) external initializer {
+    function initialize(IWrappedAvail _avail, address governance, IVectorX _vectorx) external initializer {
+        vectorx = _vectorx;
         avail = _avail;
+        __Ownable_init_unchained(governance);
     }
 
     function updateVectorx(IVectorX _vectorx) external onlyOwner {
@@ -75,9 +82,14 @@ contract AvailBridge is Ownable2Step, Initializable {
     }
 
     function addTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyOwner {
-        require(assetIds.length == tokenAddresses.length, "AvailBridge: assetIds and tokenAddresses length mismatch");
-        for (uint256 i = 0; i < assetIds.length; i++) {
+        if (assetIds.length != tokenAddresses.length) {
+            revert ArrayLengthMismatch();
+        }
+        for (uint256 i = 0; i < assetIds.length; ) {
             tokens[assetIds[i]] = tokenAddresses[i];
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -95,15 +107,13 @@ contract AvailBridge is Ownable2Step, Initializable {
             revert BridgeRootEmpty();
         }
         _checkDataRoot(input);
+        // leaf must be keccak(message)
         return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
     }
 
-    function bridgeMessage(Message calldata message, MerkleProofInput calldata input) external {
+    function bridgeMessage(Message calldata message, MerkleProofInput calldata input) external onlyEthDomain(message.domain) nonReentrant {
         if (message.messageType != 0x01 || message.assetId != 0x0 || message.value != 0) {
             revert InvalidMessage();
-        }
-        if (message.domain != ETH_DOMAIN) {
-            revert InvalidDomain();
         }
         bytes32 leaf = keccak256(abi.encode(message));
         if (isBridged[leaf]) {
@@ -119,12 +129,9 @@ contract AvailBridge is Ownable2Step, Initializable {
         emit MessageReceived(message.from, dest, message.messageId);
     }
 
-    function receiveAVL(Message calldata message, MerkleProofInput calldata input) external {
+    function receiveAVL(Message calldata message, MerkleProofInput calldata input) external onlyEthDomain(message.domain) {
         if (message.messageType != 0x02 || message.data.length != 0) {
             revert InvalidFungibleTokenTransfer();
-        }
-        if (message.domain != ETH_DOMAIN) {
-            revert InvalidDomain();
         }
         if (message.assetId != 0x0) {
             revert InvalidAssetId();
@@ -138,19 +145,14 @@ contract AvailBridge is Ownable2Step, Initializable {
         }
         isBridged[leaf] = true;
         address dest = address(bytes20(message.to));
-        if (!avail.mint(dest, message.value)) {
-            revert MintFailed();
-        }
+        avail.mint(dest, message.value);
 
         emit MessageReceived(message.from, dest, message.messageId);
     }
 
-    function receiveETH(Message calldata message, MerkleProofInput calldata input) external {
+    function receiveETH(Message calldata message, MerkleProofInput calldata input) external onlyEthDomain(message.domain) nonReentrant {
         if (message.messageType != bytes1(0x02) || message.data.length > 0) {
             revert InvalidFungibleTokenTransfer();
-        }
-        if (message.domain != AVAIL_DOMAIN) {
-            revert InvalidDomain();
         }
         if (message.assetId != ETH_ASSET_ID) {
             revert InvalidAssetId();
@@ -176,7 +178,7 @@ contract AvailBridge is Ownable2Step, Initializable {
         uint256 id = messageId++;
         Message memory message = Message(
             0x02,
-            bytes32(abi.encodePacked(msg.sender)),
+            bytes32(bytes20(msg.sender)),
             recipient,
             AVAIL_DOMAIN,
             0x0,
@@ -194,7 +196,7 @@ contract AvailBridge is Ownable2Step, Initializable {
         uint256 id = messageId++;
         Message memory message = Message(
             0x02,
-            bytes32(abi.encodePacked(msg.sender)),
+            bytes32(bytes20(msg.sender)),
             recipient,
             AVAIL_DOMAIN,
             ETH_ASSET_ID,
