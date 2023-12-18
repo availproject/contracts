@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.23;
 
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 
 /**
@@ -9,7 +10,7 @@ import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
  * @notice  A message receiver implementation for receiving messages from the Avail AMB
  * @custom:security security@availproject.org
  */
-abstract contract MessageReceiver is IMessageReceiver {
+abstract contract MessageReceiver is Initializable, IMessageReceiver {
     address public availBridge;
 
     error OnlyAvailBridge();
@@ -22,7 +23,7 @@ abstract contract MessageReceiver is IMessageReceiver {
     }
 
     // slither-disable-next-line naming-convention,dead-code
-    function __MessageReceiver_init(address _availBridge) internal virtual {
+    function __MessageReceiver_init(address _availBridge) internal virtual onlyInitializing {
         availBridge = _availBridge;
     }
 
