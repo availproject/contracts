@@ -215,8 +215,15 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
 
     function sendAVL(bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         uint256 id = messageId++;
-        Message memory message =
-            Message(0x02, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, abi.encode(bytes32(0), amount), uint64(id));
+        Message memory message = Message(
+            0x02,
+            bytes32(bytes20(msg.sender)),
+            recipient,
+            ETH_DOMAIN,
+            AVAIL_DOMAIN,
+            abi.encode(bytes32(0), amount),
+            uint64(id)
+        );
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
@@ -226,8 +233,15 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
 
     function sendETH(bytes32 recipient) external payable checkDestAmt(recipient, msg.value) {
         uint256 id = messageId++;
-        Message memory message =
-            Message(0x02, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, abi.encode(ETH_ASSET_ID, msg.value), uint64(id));
+        Message memory message = Message(
+            0x02,
+            bytes32(bytes20(msg.sender)),
+            recipient,
+            ETH_DOMAIN,
+            AVAIL_DOMAIN,
+            abi.encode(ETH_ASSET_ID, msg.value),
+            uint64(id)
+        );
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
@@ -239,8 +253,15 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
             revert InvalidAssetId();
         }
         uint256 id = messageId++;
-        Message memory message =
-            Message(0x02, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, abi.encode(assetId, amount), uint64(id));
+        Message memory message = Message(
+            0x02,
+            bytes32(bytes20(msg.sender)),
+            recipient,
+            ETH_DOMAIN,
+            AVAIL_DOMAIN,
+            abi.encode(assetId, amount),
+            uint64(id)
+        );
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
