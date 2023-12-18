@@ -20,9 +20,8 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         bytes1 messageType;
         bytes32 from;
         bytes32 to;
-        uint32 domain;
-        bytes32 assetId;
-        uint256 value;
+        uint32 originDomain;
+        uint32 destinationDomain;
         bytes data;
         uint64 messageId;
     }
@@ -44,6 +43,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
 
     uint32 public constant AVAIL_DOMAIN = 1;
     uint32 public constant ETH_DOMAIN = 2;
+    // slither-disable-next-line too-many-digits
     bytes32 public constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
     IVectorX public vectorx;
     IWrappedAvail public avail;
@@ -58,40 +58,48 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     error DataRootCommitmentEmpty();
     error BlobRootEmpty();
     error BridgeRootEmpty();
+    error InvalidAssetId();
     error InvalidMerkleProof();
     error InvalidDataRoot();
     error InvalidDomain();
+    error InvalidDestinationOrAmount();
     error InvalidMessage();
     error InvalidFungibleTokenTransfer();
     error UnlockFailed();
     error AlreadyBridged();
-    error InvalidAssetId();
 
     event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
     event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
 
-    modifier onlyEthDomain(uint32 domain) {
-        if (domain != ETH_DOMAIN) {
+    modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
+        if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
             revert InvalidDomain();
         }
         _;
     }
 
-    modifier onlyTokenTransfer(bytes1 messageType, uint256 length) {
-        if (messageType != 0x02 || length != 0) {
+    modifier onlyTokenTransfer(bytes1 messageType) {
+        if (messageType != 0x02) {
             revert InvalidFungibleTokenTransfer();
         }
         _;
     }
 
-    function initialize(IWrappedAvail _avail, address governance, IVectorX _vectorx) external initializer {
-        vectorx = _vectorx;
-        avail = _avail;
+    modifier checkDestAmt(bytes32 dest, uint256 amount) {
+        if (dest == 0x0 || amount == 0) {
+            revert InvalidDestinationOrAmount();
+        }
+        _;
+    }
+
+    function initialize(IWrappedAvail newAvail, address governance, IVectorX newVectorx) external initializer {
+        vectorx = newVectorx;
+        avail = newAvail;
         __Ownable_init_unchained(governance);
     }
 
-    function updateVectorx(IVectorX _vectorx) external onlyOwner {
-        vectorx = _vectorx;
+    function updateVectorx(IVectorX newVectorx) external onlyOwner {
+        vectorx = newVectorx;
     }
 
     function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyOwner {
@@ -106,15 +114,6 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         }
     }
 
-    function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool) {
-        if (input.blobRoot == 0x0) {
-            revert BlobRootEmpty();
-        }
-        _checkDataRoot(input);
-        // leaf must be keccak(blob)
-        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encode(input.leaf)));
-    }
-
     function verifyBridgeLeaf(MerkleProofInput calldata input) public view returns (bool) {
         if (input.bridgeRoot == 0x0) {
             revert BridgeRootEmpty();
@@ -124,12 +123,21 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
     }
 
+    function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool) {
+        if (input.blobRoot == 0x0) {
+            revert BlobRootEmpty();
+        }
+        _checkDataRoot(input);
+        // leaf must be keccak(blob)
+        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encode(input.leaf)));
+    }
+
     function receiveMessage(Message calldata message, MerkleProofInput calldata input)
         external
-        onlyEthDomain(message.domain)
+        onlySupportedDomain(message.originDomain, message.destinationDomain)
         nonReentrant
     {
-        if (message.messageType != 0x01 || message.assetId != 0x0 || message.value != 0) {
+        if (message.messageType != 0x01) {
             revert InvalidMessage();
         }
 
@@ -143,49 +151,55 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
 
     function receiveAVL(Message calldata message, MerkleProofInput calldata input)
         external
-        onlyEthDomain(message.domain)
-        onlyTokenTransfer(message.messageType, message.data.length)
+        onlySupportedDomain(message.originDomain, message.destinationDomain)
+        onlyTokenTransfer(message.messageType)
     {
-        if (message.assetId != 0x0) {
+        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
+        if (assetId != 0x0) {
             revert InvalidAssetId();
         }
 
         _checkBridgeLeaf(message, input);
 
         address dest = address(bytes20(message.to));
-        avail.mint(dest, message.value);
 
         emit MessageReceived(message.from, dest, message.messageId);
+
+        avail.mint(dest, value);
     }
 
     function receiveETH(Message calldata message, MerkleProofInput calldata input)
         external
-        onlyEthDomain(message.domain)
-        onlyTokenTransfer(message.messageType, message.data.length)
+        onlySupportedDomain(message.originDomain, message.destinationDomain)
+        onlyTokenTransfer(message.messageType)
         nonReentrant
     {
-        if (message.assetId != ETH_ASSET_ID) {
+        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
+        if (assetId != ETH_ASSET_ID) {
             revert InvalidAssetId();
         }
 
         _checkBridgeLeaf(message, input);
 
         address dest = address(bytes20(message.to));
-        (bool success,) = dest.call{value: message.value}("");
+
+        emit MessageReceived(message.from, dest, message.messageId);
+
+        // slither-disable-next-line arbitrary-send-eth,missing-zero-check,low-level-calls
+        (bool success,) = dest.call{value: value}("");
         if (!success) {
             revert UnlockFailed();
         }
-
-        emit MessageReceived(message.from, dest, message.messageId);
     }
 
     function receiveERC20(Message calldata message, MerkleProofInput calldata input)
         external
-        onlyEthDomain(message.domain)
-        onlyTokenTransfer(message.messageType, message.data.length)
+        onlySupportedDomain(message.originDomain, message.destinationDomain)
+        onlyTokenTransfer(message.messageType)
         nonReentrant
     {
-        address token = tokens[message.assetId];
+        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
+        address token = tokens[assetId];
         if (token == address(0)) {
             revert InvalidAssetId();
         }
@@ -193,43 +207,45 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         _checkBridgeLeaf(message, input);
 
         address dest = address(bytes20(message.to));
-        IERC20(token).safeTransfer(dest, message.value);
 
         emit MessageReceived(message.from, dest, message.messageId);
+
+        IERC20(token).safeTransfer(dest, value);
     }
 
-    function sendAVL(bytes32 recipient, uint256 amount) external {
+    function sendAVL(bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         uint256 id = messageId++;
         Message memory message =
-            Message(0x02, bytes32(bytes20(msg.sender)), recipient, AVAIL_DOMAIN, 0x0, amount, "", uint64(id));
+            Message(0x02, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, abi.encode(bytes32(0), amount), uint64(id));
         isSent[id] = keccak256(abi.encode(message));
+
+        emit MessageSent(msg.sender, recipient, id);
+
         avail.burn(msg.sender, amount);
-
-        emit MessageSent(msg.sender, recipient, id);
     }
 
-    function sendETH(bytes32 recipient) external payable {
+    function sendETH(bytes32 recipient) external payable checkDestAmt(recipient, msg.value) {
         uint256 id = messageId++;
-        Message memory message = Message(
-            0x02, bytes32(bytes20(msg.sender)), recipient, AVAIL_DOMAIN, ETH_ASSET_ID, msg.value, "", uint64(id)
-        );
+        Message memory message =
+            Message(0x02, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, abi.encode(ETH_ASSET_ID, msg.value), uint64(id));
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
     }
 
-    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external {
+    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         address token = tokens[assetId];
         if (token == address(0)) {
             revert InvalidAssetId();
         }
         uint256 id = messageId++;
         Message memory message =
-            Message(0x02, bytes32(bytes20(msg.sender)), recipient, AVAIL_DOMAIN, assetId, amount, "", uint64(id));
+            Message(0x02, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, abi.encode(assetId, amount), uint64(id));
         isSent[id] = keccak256(abi.encode(message));
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         emit MessageSent(msg.sender, recipient, id);
+
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function _checkBridgeLeaf(Message calldata message, MerkleProofInput calldata input) private {

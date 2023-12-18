@@ -8,16 +8,18 @@ abstract contract MessageReceiver is IMessageReceiver {
 
     error OnlyAvailBridge();
 
-    function onAvailMessage(bytes32 from, bytes calldata data) external virtual {
+    function onAvailMessage(bytes32 from, bytes calldata data) public virtual {
         if (msg.sender != availBridge) {
             revert OnlyAvailBridge();
         }
         _onAvailMessage(from, data);
     }
 
+    // slither-disable-next-line naming-convention,dead-code
     function __MessageReceiver_init(address _availBridge) internal virtual {
         availBridge = _availBridge;
     }
 
+    // slither-disable-next-line,unimplemented-functions
     function _onAvailMessage(bytes32 from, bytes calldata data) internal virtual;
 }

@@ -2,13 +2,15 @@
 pragma solidity ^0.8.22;
 
 import {ERC20, ERC20Permit} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {IWrappedAvail} from "./interfaces/IWrappedAvail.sol";
 
-contract WrappedAvail is ERC20Permit {
-    address public bridge;
+contract WrappedAvail is ERC20Permit, IWrappedAvail {
+    address public immutable bridge;
 
     error OnlyBridge();
 
     constructor(address _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
+        // slither-disable-next-line missing-zero-check
         bridge = _bridge;
     }
 
