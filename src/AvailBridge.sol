@@ -18,10 +18,13 @@ import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 /**
  * @author  @QEDK (Avail)
  * @title   AvailBridge
- * @notice  An arbitrary message bridge between Avail <-> Ethereum  
+ * @notice  An arbitrary message bridge between Avail <-> Ethereum
  * @custom:security security@availproject.org
  */
 contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
+    using Merkle for bytes32[];
+    using SafeERC20 for IERC20;
+
     struct Message {
         bytes1 messageType;
         bytes32 from;
@@ -35,7 +38,6 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     struct MerkleProofInput {
         bytes32[] dataRootProof;
         bytes32[] leafProof;
-        bytes32 dataRoot;
         bytes32 rangeHash;
         uint256 dataRootIndex;
         bytes32 blobRoot;
@@ -44,14 +46,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         uint256 leafIndex;
     }
 
-    using Merkle for bytes32[];
-    using SafeERC20 for IERC20;
-
+    bytes1 private constant TOKEN_TX_PREFIX = 0x02;
     uint32 private constant AVAIL_DOMAIN = 1;
     uint32 private constant ETH_DOMAIN = 2;
+    // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
-    bytes1 private constant TOKEN_TRANSFER_MESSAGE_TYPE = 0x02;
     IVectorx public vectorx;
     IWrappedAvail public avail;
     uint256 public messageId;
@@ -60,23 +60,23 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     mapping(uint256 => bytes32) public isSent;
     mapping(bytes32 => address) public tokens;
 
+    event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
+    event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
+
     error ArrayLengthMismatch();
     error InvalidDataRootProof();
     error DataRootCommitmentEmpty();
     error BlobRootEmpty();
     error BridgeRootEmpty();
+    error InvalidLeaf();
     error InvalidAssetId();
     error InvalidMerkleProof();
-    error InvalidDataRoot();
     error InvalidDomain();
     error InvalidDestinationOrAmount();
     error InvalidMessage();
     error InvalidFungibleTokenTransfer();
     error UnlockFailed();
     error AlreadyBridged();
-
-    event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
-    event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
@@ -129,35 +129,6 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
                 ++i;
             }
         }
-    }
-
-    /**
-     * @notice  Takes a Merkle tree proof of inclusion for a bridge leaf and verifies it
-     * @param   input  Merkle tree proof of inclusion for the bridge leaf
-     * @return  bool  Returns true if the bridge leaf is valid, else false
-     */
-    function verifyBridgeLeaf(MerkleProofInput calldata input) public view returns (bool) {
-        if (input.bridgeRoot == 0x0) {
-            revert BridgeRootEmpty();
-        }
-        _checkDataRoot(input);
-        // leaf must be keccak(message)
-        return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
-    }
-
-    /**
-     * @notice  Takes a Merkle tree proof of inclusion for a blob leaf and verifies it
-     * @dev     This function is used for data attestation on Ethereum
-     * @param   input  Merkle tree proof of inclusion for the blob leaf
-     * @return  bool  Returns true if the blob leaf is valid, else false
-     */
-    function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool) {
-        if (input.blobRoot == 0x0) {
-            revert BlobRootEmpty();
-        }
-        _checkDataRoot(input);
-        // leaf must be keccak(blob)
-        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encode(input.leaf)));
     }
 
     /**
@@ -274,7 +245,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     function sendAVL(bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         uint256 id = messageId++;
         Message memory message = Message(
-            TOKEN_TRANSFER_MESSAGE_TYPE,
+            TOKEN_TX_PREFIX,
             bytes32(bytes20(msg.sender)),
             recipient,
             ETH_DOMAIN,
@@ -297,7 +268,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     function sendETH(bytes32 recipient) external payable checkDestAmt(recipient, msg.value) {
         uint256 id = messageId++;
         Message memory message = Message(
-            TOKEN_TRANSFER_MESSAGE_TYPE,
+            TOKEN_TX_PREFIX,
             bytes32(bytes20(msg.sender)),
             recipient,
             ETH_DOMAIN,
@@ -324,7 +295,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         }
         uint256 id = messageId++;
         Message memory message = Message(
-            TOKEN_TRANSFER_MESSAGE_TYPE,
+            TOKEN_TX_PREFIX,
             bytes32(bytes20(msg.sender)),
             recipient,
             ETH_DOMAIN,
@@ -340,6 +311,38 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     }
 
     /**
+     * @notice  Takes a Merkle tree proof of inclusion for a blob leaf and verifies it
+     * @dev     This function is used for data attestation on Ethereum
+     * @param   input  Merkle tree proof of inclusion for the blob leaf
+     * @return  bool  Returns true if the blob leaf is valid, else false
+     */
+    function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool) {
+        if (input.blobRoot == 0x0) {
+            revert BlobRootEmpty();
+        }
+        _checkDataRoot(input);
+        // leaf must be keccak(blob)
+        // we don't need to check that the leaf is non-zero because hash the pre-image ourselves
+        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encodePacked(input.leaf)));
+    }
+
+    /**
+     * @notice  Takes a Merkle tree proof of inclusion for a bridge leaf and verifies it
+     * @dev     This function does not validate that the leaf itself is valid, only that it's included
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     * @return  bool  Returns true if the bridge leaf is valid, else false
+     */
+    function verifyBridgeLeaf(MerkleProofInput calldata input) public view returns (bool) {
+        if (input.bridgeRoot == 0x0) {
+            revert BridgeRootEmpty();
+        }
+        _checkDataRoot(input);
+        // leaf must be keccak(message)
+        // we don't need to check that the leaf is non-zero because we check that the root is non-zero
+        return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
+    }
+
+    /**
      * @notice  Takes a message and its proof of inclusion, verifies and marks it as spent (if valid)
      * @dev     This function is used for verifying a message and marking it as spent (if valid)
      * @param   message  Message that is used to reconstruct the bridge leaf
@@ -350,9 +353,15 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         if (isBridged[leaf]) {
             revert AlreadyBridged();
         }
+        // validate that the leaf being proved is indeed the message hash!
+        if (input.leaf != leaf) {
+            revert InvalidLeaf();
+        }
+        // check proof of inclusion
         if (!verifyBridgeLeaf(input)) {
             revert InvalidMerkleProof();
         }
+        // mark as spent
         isBridged[leaf] = true;
     }
 
@@ -366,11 +375,14 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         if (dataRootCommitment == 0x0) {
             revert DataRootCommitmentEmpty();
         }
-        if (!input.dataRootProof.verify(dataRootCommitment, input.dataRootIndex, input.dataRoot)) {
+        // we construct the data root here internally, it is not possible to create an invalid data root that is
+        // also part of the commitment tree
+        if (
+            !input.dataRootProof.verify(
+                dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
+            )
+        ) {
             revert InvalidDataRootProof();
-        }
-        if (input.dataRoot != keccak256(abi.encode(input.blobRoot, input.bridgeRoot))) {
-            revert InvalidDataRoot();
         }
     }
 }
