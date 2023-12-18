@@ -41,10 +41,11 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     using Merkle for bytes32[];
     using SafeERC20 for IERC20;
 
-    uint32 public constant AVAIL_DOMAIN = 1;
-    uint32 public constant ETH_DOMAIN = 2;
+    uint32 private constant AVAIL_DOMAIN = 1;
+    uint32 private constant ETH_DOMAIN = 2;
     // slither-disable-next-line too-many-digits
-    bytes32 public constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
+    bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
+    bytes1 private constant TOKEN_TRANSFER_MESSAGE_TYPE = 0x02;
     IVectorX public vectorx;
     IWrappedAvail public avail;
     uint256 public messageId;
@@ -216,7 +217,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     function sendAVL(bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         uint256 id = messageId++;
         Message memory message = Message(
-            0x02,
+            TOKEN_TRANSFER_MESSAGE_TYPE,
             bytes32(bytes20(msg.sender)),
             recipient,
             ETH_DOMAIN,
@@ -234,7 +235,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     function sendETH(bytes32 recipient) external payable checkDestAmt(recipient, msg.value) {
         uint256 id = messageId++;
         Message memory message = Message(
-            0x02,
+            TOKEN_TRANSFER_MESSAGE_TYPE,
             bytes32(bytes20(msg.sender)),
             recipient,
             ETH_DOMAIN,
@@ -254,7 +255,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         }
         uint256 id = messageId++;
         Message memory message = Message(
-            0x02,
+            TOKEN_TRANSFER_MESSAGE_TYPE,
             bytes32(bytes20(msg.sender)),
             recipient,
             ETH_DOMAIN,
