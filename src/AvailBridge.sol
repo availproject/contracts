@@ -15,6 +15,12 @@ import {Merkle} from "src/lib/Merkle.sol";
 import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 
+/**
+ * @author  @QEDK (Avail)
+ * @title   AvailBridge
+ * @notice  An arbitrary message bridge between Avail <-> Ethereum  
+ * @custom:security security@availproject.org
+ */
 contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     struct Message {
         bytes1 messageType;
@@ -99,10 +105,20 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         __Ownable_init_unchained(governance);
     }
 
+    /**
+     * @notice  Update the address of the VectorX contract
+     * @param   newVectorx  Address of new VectorX contract
+     */
     function updateVectorx(IVectorX newVectorx) external onlyOwner {
         vectorx = newVectorx;
     }
 
+    /**
+     * @notice  Function to update asset ID -> token address mapping
+     * @dev     Only callable by governance
+     * @param   assetIds  Asset IDs to update
+     * @param   tokenAddresses  Token addresses to update
+     */
     function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyOwner {
         if (assetIds.length != tokenAddresses.length) {
             revert ArrayLengthMismatch();
@@ -115,6 +131,11 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         }
     }
 
+    /**
+     * @notice  Takes a Merkle tree proof of inclusion for a bridge leaf and verifies it
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     * @return  bool  Returns true if the bridge leaf is valid, else false
+     */
     function verifyBridgeLeaf(MerkleProofInput calldata input) public view returns (bool) {
         if (input.bridgeRoot == 0x0) {
             revert BridgeRootEmpty();
@@ -124,6 +145,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
     }
 
+    /**
+     * @notice  Takes a Merkle tree proof of inclusion for a blob leaf and verifies it
+     * @dev     This function is used for data attestation on Ethereum
+     * @param   input  Merkle tree proof of inclusion for the blob leaf
+     * @return  bool  Returns true if the blob leaf is valid, else false
+     */
     function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool) {
         if (input.blobRoot == 0x0) {
             revert BlobRootEmpty();
@@ -133,6 +160,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encode(input.leaf)));
     }
 
+    /**
+     * @notice  Takes an arbitrary message and its proof of inclusion, verifies and executes it (if valid)
+     * @dev     This function is used for passing arbitrary data from Avail to Ethereum
+     * @param   message  Message that is used to reconstruct the bridge leaf
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     */
     function receiveMessage(Message calldata message, MerkleProofInput calldata input)
         external
         onlySupportedDomain(message.originDomain, message.destinationDomain)
@@ -150,6 +183,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         emit MessageReceived(message.from, dest, message.messageId);
     }
 
+    /**
+     * @notice  Takes an AVL transfer message and its proof of inclusion, verifies and executes it (if valid)
+     * @dev     This function is used for AVL transfers from Avail to Ethereum
+     * @param   message  Message that is used to reconstruct the bridge leaf
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     */
     function receiveAVL(Message calldata message, MerkleProofInput calldata input)
         external
         onlySupportedDomain(message.originDomain, message.destinationDomain)
@@ -169,6 +208,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         avail.mint(dest, value);
     }
 
+    /**
+     * @notice  Takes an ETH transfer message and its proof of inclusion, verifies and executes it (if valid)
+     * @dev     This function is used for ETH transfers from Avail to Ethereum
+     * @param   message  Message that is used to reconstruct the bridge leaf
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     */
     function receiveETH(Message calldata message, MerkleProofInput calldata input)
         external
         onlySupportedDomain(message.originDomain, message.destinationDomain)
@@ -193,6 +238,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         }
     }
 
+    /**
+     * @notice  Takes an ERC20 transfer message and its proof of inclusion, verifies and executes it (if valid)
+     * @dev     This function is used for ERC20 transfers from Avail to Ethereum
+     * @param   message  Message that is used to reconstruct the bridge leaf
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     */
     function receiveERC20(Message calldata message, MerkleProofInput calldata input)
         external
         onlySupportedDomain(message.originDomain, message.destinationDomain)
@@ -214,6 +265,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         IERC20(token).safeTransfer(dest, value);
     }
 
+    /**
+     * @notice  Burns amount worth of WAVL tokens and bridges it to the specified recipient on Avail
+     * @dev     This function is used for AVL transfers from Ethereum to Avail
+     * @param   recipient  Recipient of the AVL tokens on Avail
+     * @param   amount  Amount of AVL tokens to bridge
+     */
     function sendAVL(bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         uint256 id = messageId++;
         Message memory message = Message(
@@ -232,6 +289,11 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         avail.burn(msg.sender, amount);
     }
 
+    /**
+     * @notice  Bridges ETH to the specified recipient on Avail
+     * @dev     This function is used for ETH transfers from Ethereum to Avail
+     * @param   recipient  Recipient of the ETH on Avail
+     */
     function sendETH(bytes32 recipient) external payable checkDestAmt(recipient, msg.value) {
         uint256 id = messageId++;
         Message memory message = Message(
@@ -248,6 +310,13 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         emit MessageSent(msg.sender, recipient, id);
     }
 
+    /**
+     * @notice  Bridges ERC20 tokens to the specified recipient on Avail
+     * @dev     This function is used for ERC20 transfers from Ethereum to Avail
+     * @param   assetId  Asset ID of the ERC20 token
+     * @param   recipient  Recipient of the asset on Avail
+     * @param   amount  Amount of ERC20 tokens to bridge
+     */
     function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
         address token = tokens[assetId];
         if (token == address(0)) {
@@ -270,6 +339,12 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
+    /**
+     * @notice  Takes a message and its proof of inclusion, verifies and marks it as spent (if valid)
+     * @dev     This function is used for verifying a message and marking it as spent (if valid)
+     * @param   message  Message that is used to reconstruct the bridge leaf
+     * @param   input  Merkle tree proof of inclusion for the bridge leaf
+     */
     function _checkBridgeLeaf(Message calldata message, MerkleProofInput calldata input) private {
         bytes32 leaf = keccak256(abi.encode(message));
         if (isBridged[leaf]) {
@@ -281,6 +356,11 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         isBridged[leaf] = true;
     }
 
+    /**
+     * @notice  Takes a Merkle proof of inclusion, and verifies it
+     * @dev     This function is used for verifying a Merkle proof of inclusion for a data root
+     * @param   input  Merkle tree proof of inclusion for the data root
+     */
     function _checkDataRoot(MerkleProofInput calldata input) private view {
         bytes32 dataRootCommitment = vectorx.dataRootCommitments(input.rangeHash);
         if (dataRootCommitment == 0x0) {
