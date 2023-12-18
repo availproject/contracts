@@ -2,6 +2,12 @@
 // Modified from https://github.com/QEDK/solidity-misc/blob/master/contracts/Merkle.sol
 pragma solidity ^0.8.23;
 
+/**
+ * @author  @QEDK
+ * @title   Merkle
+ * @notice  A gas-efficient ordered Merkle proof of inclusion implementation
+ * @custom:security security@availproject.org
+ */
 library Merkle {
     function verify(bytes32[] calldata proof, bytes32 root, uint256 index, bytes32 leaf)
         internal

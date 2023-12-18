@@ -3,6 +3,12 @@ pragma solidity ^0.8.23;
 
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 
+/**
+ * @author  @QEDK (Avail)
+ * @title   MessageReceiver
+ * @notice  A message receiver implementation for receiving messages from the Avail AMB
+ * @custom:security security@availproject.org
+ */
 abstract contract MessageReceiver is IMessageReceiver {
     address public availBridge;
 
