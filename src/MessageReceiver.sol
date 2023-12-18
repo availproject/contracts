@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.23;
 
-import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
+import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 
 abstract contract MessageReceiver is IMessageReceiver {
     address public availBridge;

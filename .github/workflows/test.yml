@@ -28,7 +28,6 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge --version
           forge build --sizes
         id: build
 
@@ -73,7 +72,6 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge --version
           forge build --sizes
         id: build
 

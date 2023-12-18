@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.23;
 
 import {ERC20, ERC20Permit} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {IWrappedAvail} from "./interfaces/IWrappedAvail.sol";
+import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 
 contract WrappedAvail is ERC20Permit, IWrappedAvail {
     address public immutable bridge;

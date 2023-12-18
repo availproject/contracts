@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Modified from https://github.com/QEDK/solidity-misc/blob/master/contracts/Merkle.sol
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.23;
 
 library Merkle {
     function verify(bytes32[] calldata proof, bytes32 root, uint256 index, bytes32 leaf)

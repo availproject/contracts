@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.23;
 
 import {
     OwnableUpgradeable,
@@ -10,10 +10,10 @@ import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IVectorX} from "./interfaces/IVectorX.sol";
-import {Merkle} from "./lib/Merkle.sol";
-import {IWrappedAvail} from "./interfaces/IWrappedAvail.sol";
-import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
+import {IVectorX} from "src/interfaces/IVectorX.sol";
+import {Merkle} from "src/lib/Merkle.sol";
+import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 
 contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     struct Message {
