@@ -10,7 +10,7 @@ import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IVectorX} from "src/interfaces/IVectorX.sol";
+import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {Merkle} from "src/lib/Merkle.sol";
 import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
@@ -52,7 +52,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     // slither-disable-next-line too-many-digits
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
     bytes1 private constant TOKEN_TRANSFER_MESSAGE_TYPE = 0x02;
-    IVectorX public vectorx;
+    IVectorx public vectorx;
     IWrappedAvail public avail;
     uint256 public messageId;
 
@@ -99,7 +99,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         _;
     }
 
-    function initialize(IWrappedAvail newAvail, address governance, IVectorX newVectorx) external initializer {
+    function initialize(IWrappedAvail newAvail, address governance, IVectorx newVectorx) external initializer {
         vectorx = newVectorx;
         avail = newAvail;
         __Ownable_init_unchained(governance);
@@ -109,7 +109,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      * @notice  Update the address of the VectorX contract
      * @param   newVectorx  Address of new VectorX contract
      */
-    function updateVectorx(IVectorX newVectorx) external onlyOwner {
+    function updateVectorx(IVectorx newVectorx) external onlyOwner {
         vectorx = newVectorx;
     }
 

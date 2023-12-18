@@ -28,9 +28,6 @@ jobs:
 
       - name: Run Forge build
         run: |
-          ls -a
-          cd src/interfaces && ls -a
-          cd ../..
           forge build --sizes
         id: build
 
