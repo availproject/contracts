@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.23;
 
-import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from
+    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {AvailBridge} from "src/AvailBridge.sol";
 import {WrappedAvail, IWrappedAvail} from "src/WrappedAvail.sol";
@@ -35,40 +36,18 @@ contract AvailBridgeTest is Test {
         MessageReceiverMock messageReceiver = new MessageReceiverMock();
         messageReceiver.initialize(address(bridge));
 
-        AvailBridge.Message memory message = AvailBridge.Message(
-            0x01,
-            from,
-            bytes32(bytes20(address(messageReceiver))),
-            1,
-            2,
-            data,
-            messageId
-        );
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x01, from, bytes32(bytes20(address(messageReceiver))), 1, 2, data, messageId);
         bytes32 messageHash = keccak256(abi.encode(message));
         bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
 
         vectorx.set(rangeHash, dataRoot);
 
         bytes32[] memory emptyArr;
-        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
-            emptyArr,
-            emptyArr,
-            rangeHash,
-            0,
-            bytes32(0),
-            messageHash,
-            messageHash,
-            0
-        );
+        AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
 
-        vm.expectCall(
-            address(messageReceiver),
-            abi.encodeCall(
-                messageReceiver.onAvailMessage,
-                (from,
-                data)
-            )
-        );
+        vm.expectCall(address(messageReceiver), abi.encodeCall(messageReceiver.onAvailMessage, (from, data)));
         bridge.receiveMessage(message, input);
     }
 }
