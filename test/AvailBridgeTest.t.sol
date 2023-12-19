@@ -69,7 +69,9 @@ contract AvailBridgeTest is Test {
     }
 
     function test_receiveETH(bytes32 rangeHash, bytes32 from, address to, uint256 amount, uint64 messageId) external {
-        vm.assume(uint256(uint160(to)) > 9 && amount != 0 && to != address(vm));
+        // while technically contracts can receive ETH, foundry fuzzes with a lot of random contracts that cannot
+        // receive ETH
+        vm.assume(amount != 0 && to.code.length == 0);
         vm.deal(address(bridge), amount);
         AvailBridge.Message memory message = AvailBridge.Message(
             0x02,
