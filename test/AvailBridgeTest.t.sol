@@ -50,4 +50,40 @@ contract AvailBridgeTest is Test {
         vm.expectCall(address(messageReceiver), abi.encodeCall(messageReceiver.onAvailMessage, (from, data)));
         bridge.receiveMessage(message, input);
     }
+
+    function test_receiveAVL(bytes32 rangeHash, bytes32 from, address to, uint256 amount, uint64 messageId) external {
+        vm.assume(to != address(0) && amount != 0);
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), amount), messageId);
+        bytes32 messageHash = keccak256(abi.encode(message));
+        bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
+
+        vectorx.set(rangeHash, dataRoot);
+
+        bytes32[] memory emptyArr;
+        AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
+
+        vm.expectCall(address(avail), abi.encodeCall(avail.mint, (to, amount)));
+        bridge.receiveAVL(message, input);
+    }
+
+    function test_receiveETH(bytes32 rangeHash, bytes32 from, address to, uint256 amount, uint64 messageId) external {
+        vm.assume(uint256(uint160(to)) > 9 && amount != 0 && to != address(vm));
+        vm.deal(address(bridge), amount);
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(0x4554480000000000000000000000000000000000000000000000000000000000, amount), messageId);
+        bytes32 messageHash = keccak256(abi.encode(message));
+        bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
+
+        vectorx.set(rangeHash, dataRoot);
+
+        bytes32[] memory emptyArr;
+        AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
+
+        uint256 balance = to.balance;
+        bridge.receiveETH(message, input);
+        assertEq(to.balance, balance + amount);
+    }
 }
