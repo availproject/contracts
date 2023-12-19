@@ -71,8 +71,15 @@ contract AvailBridgeTest is Test {
     function test_receiveETH(bytes32 rangeHash, bytes32 from, address to, uint256 amount, uint64 messageId) external {
         vm.assume(uint256(uint160(to)) > 9 && amount != 0 && to != address(vm));
         vm.deal(address(bridge), amount);
-        AvailBridge.Message memory message =
-            AvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(0x4554480000000000000000000000000000000000000000000000000000000000, amount), messageId);
+        AvailBridge.Message memory message = AvailBridge.Message(
+            0x02,
+            from,
+            bytes32(bytes20(to)),
+            1,
+            2,
+            abi.encode(0x4554480000000000000000000000000000000000000000000000000000000000, amount),
+            messageId
+        );
         bytes32 messageHash = keccak256(abi.encode(message));
         bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
 
