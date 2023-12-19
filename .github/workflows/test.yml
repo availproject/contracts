@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          FOUNDRY_PROFILE=intense forge test -vvv
         id: test
 
   slither:
