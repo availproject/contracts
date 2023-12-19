@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.8.23;
 
-import "@utils/Test.sol";
-import {MurkyBase} from "murky/common/MurkyBase.sol";
+import {MurkyBase} from "lib/murky/src/common/MurkyBase.sol";
 import {Merkle} from "src/lib/Merkle.sol";
+import {Vm, Test} from "forge-std/Test.sol";
 
 contract MerkleTest is Test, MurkyBase {
     MerkleUser merkleUser;
@@ -17,43 +17,65 @@ contract MerkleTest is Test, MurkyBase {
         _hash = keccak256(abi.encode(left, right));
     }
 
-    function testCheckMembershipSingleLeaf(bytes32 leaf, uint256 index) public {
+    function testCheckMembershipSingleLeaf(bytes32 leaf, uint256 index) external {
         vm.assume(index != 0);
         bytes32 randomDataHash = keccak256(abi.encode(leaf));
         bytes32[] memory proof = new bytes32[](0);
 
         // should return true for leaf and false for random hash
         assertTrue(merkleUser.checkMembership(leaf, 0, leaf, proof));
+        // check with wrong leaf
         assertFalse(merkleUser.checkMembership(randomDataHash, 0, leaf, proof));
+        // check with fixed wrong index
+        assertFalse(merkleUser.checkMembership(leaf, 1, leaf, proof));
+        // check with wrong index
         assertFalse(merkleUser.checkMembership(leaf, index, leaf, proof));
+        // check with wrong leaf and wrong index
+        assertFalse(merkleUser.checkMembership(randomDataHash, index, leaf, proof));
     }
 
-    function testCheckMembership(bytes32[] memory leaves, uint256 index) public {
-        vm.assume(leaves.length > 1);
-        vm.assume(index < leaves.length);
+    function testCheckMembership(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot) external {
+        vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
+        vm.assume(wrongRoot != root);
         bytes32[] memory proof = getProof(leaves, index);
         bytes32 leaf = leaves[index];
         bytes32 randomDataHash = keccak256(abi.encode(leaf));
 
         // should return true for leaf and false for random hash
         assertTrue(merkleUser.checkMembership(leaf, index, root, proof));
+        // check with wrong leaf
         assertFalse(merkleUser.checkMembership(randomDataHash, index, root, proof));
+        // check with fixed wrong index
         assertFalse(merkleUser.checkMembership(leaf, leaves.length, root, proof));
+        // check with wrong index
+        assertFalse(merkleUser.checkMembership(leaf, wrongIndex, root, proof));
+        // check with wrong index and wrong leaf
+        assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, root, proof));
+        // check with wrong index, wrong leaf and wrong root
+        assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, wrongRoot, proof));
     }
 
-    function testCheckMembershipLargeTree(bytes32[] memory leaves, uint256 index) public {
-        vm.assume(leaves.length > 128);
-        vm.assume(index < leaves.length);
+    function testCheckMembershipLargeTree(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot) external {
+        vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
+        vm.assume(wrongRoot != root);
         bytes32[] memory proof = getProof(leaves, index);
         bytes32 leaf = leaves[index];
         bytes32 randomDataHash = keccak256(abi.encode(leaf));
 
         // should return true for leaf and false for random hash
         assertTrue(merkleUser.checkMembership(leaf, index, root, proof));
+        // check with wrong leaf
         assertFalse(merkleUser.checkMembership(randomDataHash, index, root, proof));
+        // check with fixed wrong index
         assertFalse(merkleUser.checkMembership(leaf, leaves.length, root, proof));
+        // check with wrong index
+        assertFalse(merkleUser.checkMembership(leaf, wrongIndex, root, proof));
+        // check with wrong index and wrong leaf
+        assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, root, proof));
+        // check with wrong index, wrong leaf and wrong root
+        assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, wrongRoot, proof));
     }
 }
 
