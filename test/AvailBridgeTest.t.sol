@@ -7,7 +7,7 @@ import {AvailBridge} from "src/AvailBridge.sol";
 import {WrappedAvail, IWrappedAvail} from "src/WrappedAvail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
-import {Test} from "forge-std/Test.sol";
+import {Vm, Test} from "forge-std/Test.sol";
 
 contract AvailBridgeTest is Test {
     AvailBridge public bridge;
@@ -48,5 +48,27 @@ contract AvailBridgeTest is Test {
         bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
 
         vectorx.set(rangeHash, dataRoot);
+
+        bytes32[] memory emptyArr;
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            emptyArr,
+            emptyArr,
+            rangeHash,
+            0,
+            bytes32(0),
+            messageHash,
+            messageHash,
+            0
+        );
+
+        vm.expectCall(
+            address(messageReceiver),
+            abi.encodeCall(
+                messageReceiver.onAvailMessage,
+                (from,
+                data)
+            )
+        );
+        bridge.receiveMessage(message, input);
     }
 }
