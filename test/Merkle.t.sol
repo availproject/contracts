@@ -34,7 +34,9 @@ contract MerkleTest is Test, MurkyBase {
         assertFalse(merkleUser.checkMembership(randomDataHash, index, leaf, proof));
     }
 
-    function testCheckMembership(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot) external {
+    function testCheckMembership(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot)
+        external
+    {
         vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);
@@ -56,7 +58,9 @@ contract MerkleTest is Test, MurkyBase {
         assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, wrongRoot, proof));
     }
 
-    function testCheckMembershipLargeTree(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot) external {
+    function testCheckMembershipLargeTree(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot)
+        external
+    {
         vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);
@@ -84,12 +88,11 @@ contract MerkleTest is Test, MurkyBase {
 //////////////////////////////////////////////////////////////////////////*/
 
 contract MerkleUser {
-    function checkMembership(
-        bytes32 leaf,
-        uint256 index,
-        bytes32 rootHash,
-        bytes32[] calldata proof
-    ) external pure returns (bool) {
+    function checkMembership(bytes32 leaf, uint256 index, bytes32 rootHash, bytes32[] calldata proof)
+        external
+        pure
+        returns (bool)
+    {
         bool r = Merkle.verify(proof, rootHash, index, leaf);
         return r;
     }

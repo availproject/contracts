@@ -98,7 +98,14 @@ contract AvailBridgeTest is Test {
         assertEq(to.balance, balance + amount);
     }
 
-    function test_receiveERC20(bytes32 rangeHash, bytes32 assetId, bytes32 from, address to, uint256 amount, uint64 messageId) external {
+    function test_receiveERC20(
+        bytes32 rangeHash,
+        bytes32 assetId,
+        bytes32 from,
+        address to,
+        uint256 amount,
+        uint64 messageId
+    ) external {
         vm.assume(amount != 0 && to != address(0) && to != address(bridge));
         ERC20Mock token = new ERC20Mock();
         token.mint(address(bridge), amount);
@@ -108,15 +115,8 @@ contract AvailBridgeTest is Test {
         tokenArr[0] = address(token);
         vm.prank(owner);
         bridge.updateTokens(assetIdArr, tokenArr);
-        AvailBridge.Message memory message = AvailBridge.Message(
-            0x02,
-            from,
-            bytes32(bytes20(to)),
-            1,
-            2,
-            abi.encode(assetId, amount),
-            messageId
-        );
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(assetId, amount), messageId);
         bytes32 messageHash = keccak256(abi.encode(message));
         bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
 
@@ -133,18 +133,11 @@ contract AvailBridgeTest is Test {
     }
 
     function test_sendAVL(address from, bytes32 to, uint256 amount) external {
-        vm.assume(from != address(0) && to != bytes32(0) && amount != 0  && from != address(admin));
+        vm.assume(from != address(0) && to != bytes32(0) && amount != 0 && from != address(admin));
         vm.prank(address(bridge));
         avail.mint(from, amount);
-        AvailBridge.Message memory message = AvailBridge.Message(
-            0x02,
-            bytes32(bytes20(from)),
-            to,
-            2,
-            1,
-            abi.encode(bytes32(0), amount),
-            0
-        );
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x02, bytes32(bytes20(from)), to, 2, 1, abi.encode(bytes32(0), amount), 0);
         vm.expectCall(address(avail), abi.encodeCall(avail.burn, (from, amount)));
         vm.prank(from);
         bridge.sendAVL(to, amount);
