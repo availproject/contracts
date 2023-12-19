@@ -147,7 +147,9 @@ contract AvailBridgeTest is Test {
     }
 
     function test_sendETH(address from, bytes32 to, uint256 amount) external {
-        vm.assume(from != address(0) && to != bytes32(0) && amount != 0 && from != address(admin) && from != address(bridge));
+        vm.assume(
+            from != address(0) && to != bytes32(0) && amount != 0 && from != address(admin) && from != address(bridge)
+        );
         vm.deal(from, amount);
         AvailBridge.Message memory message = AvailBridge.Message(
             0x02,
@@ -176,15 +178,8 @@ contract AvailBridgeTest is Test {
         tokenArr[0] = address(token);
         vm.prank(owner);
         bridge.updateTokens(assetIdArr, tokenArr);
-        AvailBridge.Message memory message = AvailBridge.Message(
-            0x02,
-            bytes32(bytes20(from)),
-            to,
-            2,
-            1,
-            abi.encode(assetId, amount),
-            0
-        );
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x02, bytes32(bytes20(from)), to, 2, 1, abi.encode(assetId, amount), 0);
         vm.startPrank(from);
         token.approve(address(bridge), amount);
         vm.expectCall(address(token), abi.encodeCall(token.transferFrom, (from, address(bridge), amount)));
