@@ -99,13 +99,9 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(to.balance, balance + amount);
     }
 
-    function test_receiveERC20(
-        bytes32 rangeHash,
-        bytes32 assetId,
-        bytes32 from,
-        uint256 amount,
-        uint64 messageId
-    ) external {
+    function test_receiveERC20(bytes32 rangeHash, bytes32 assetId, bytes32 from, uint256 amount, uint64 messageId)
+        external
+    {
         vm.assume(amount != 0);
         address to = makeAddr("to");
         ERC20Mock token = new ERC20Mock();
@@ -191,11 +187,17 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(token.balanceOf(address(bridge)), amount);
     }
 
-    function test_verifyBlobLeaf(bytes32[16] calldata preimages, bytes32[16] calldata c_dataRoots, bytes32 rangeHash, uint256 rand, bytes32 bridgeRoot) external {
+    function test_verifyBlobLeaf(
+        bytes32[16] calldata preimages,
+        bytes32[16] calldata c_dataRoots,
+        bytes32 rangeHash,
+        uint256 rand,
+        bytes32 bridgeRoot
+    ) external {
         // we use a fixed size array because the fuzzer rejects too many inputs with arbitrary lengths
         bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
         bytes32[] memory leaves = new bytes32[](preimages.length);
-        for (uint256 i = 0; i < preimages.length; ) {
+        for (uint256 i = 0; i < preimages.length;) {
             dataRoots[i] = c_dataRoots[i];
             leaves[i] = keccak256(abi.encode(preimages[i]));
             unchecked {
@@ -209,10 +211,11 @@ contract AvailBridgeTest is Test, MurkyBase {
         bytes32 dataRootCommitment = getRoot(dataRoots);
         bytes32[] memory dataRootProof = getProof(dataRoots, rand % dataRoots.length);
         vectorx.set(rangeHash, dataRootCommitment);
-        for (uint256 i = 0; i < leaves.length; ) {
+        for (uint256 i = 0; i < leaves.length;) {
             bytes32[] memory leafProof = getProof(leaves, i);
-            AvailBridge.MerkleProofInput memory input =
-            AvailBridge.MerkleProofInput(dataRootProof, leafProof, rangeHash, rand % dataRoots.length, blobRoot, bridgeRoot, preimages[i], i);
+            AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+                dataRootProof, leafProof, rangeHash, rand % dataRoots.length, blobRoot, bridgeRoot, preimages[i], i
+            );
             assertTrue(bridge.verifyBlobLeaf(input));
             unchecked {
                 ++i;
@@ -220,11 +223,17 @@ contract AvailBridgeTest is Test, MurkyBase {
         }
     }
 
-    function test_verifyBridgeLeaf(bytes32[16] calldata c_leaves, bytes32[16] calldata c_dataRoots, bytes32 rangeHash, uint256 rand, bytes32 blobRoot) external {
+    function test_verifyBridgeLeaf(
+        bytes32[16] calldata c_leaves,
+        bytes32[16] calldata c_dataRoots,
+        bytes32 rangeHash,
+        uint256 rand,
+        bytes32 blobRoot
+    ) external {
         // we use a fixed size array because the fuzzer rejects too many inputs with arbitrary lengths
         bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
         bytes32[] memory leaves = new bytes32[](c_leaves.length);
-        for (uint256 i = 0; i < c_leaves.length; ) {
+        for (uint256 i = 0; i < c_leaves.length;) {
             dataRoots[i] = c_dataRoots[i];
             leaves[i] = c_leaves[i];
             unchecked {
@@ -238,10 +247,11 @@ contract AvailBridgeTest is Test, MurkyBase {
         bytes32 dataRootCommitment = getRoot(dataRoots);
         bytes32[] memory dataRootProof = getProof(dataRoots, rand % dataRoots.length);
         vectorx.set(rangeHash, dataRootCommitment);
-        for (uint256 i = 0; i < leaves.length; ) {
+        for (uint256 i = 0; i < leaves.length;) {
             bytes32[] memory leafProof = getProof(leaves, i);
-            AvailBridge.MerkleProofInput memory input =
-            AvailBridge.MerkleProofInput(dataRootProof, leafProof, rangeHash, rand % dataRoots.length, blobRoot, bridgeRoot, leaves[i], i);
+            AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+                dataRootProof, leafProof, rangeHash, rand % dataRoots.length, blobRoot, bridgeRoot, leaves[i], i
+            );
             assertTrue(bridge.verifyBridgeLeaf(input));
             unchecked {
                 ++i;
