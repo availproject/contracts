@@ -10,8 +10,9 @@ import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
 import {Vm, Test} from "forge-std/Test.sol";
+import {MurkyBase} from "lib/murky/src/common/MurkyBase.sol";
 
-contract AvailBridgeTest is Test {
+contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
     WrappedAvail public avail;
     VectorxMock public vectorx;
@@ -52,8 +53,9 @@ contract AvailBridgeTest is Test {
         bridge.receiveMessage(message, input);
     }
 
-    function test_receiveAVL(bytes32 rangeHash, bytes32 from, address to, uint256 amount, uint64 messageId) external {
-        vm.assume(to != address(0) && amount != 0);
+    function test_receiveAVL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
+        vm.assume(amount != 0);
+        address to = makeAddr("to");
         AvailBridge.Message memory message =
             AvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), amount), messageId);
         bytes32 messageHash = keccak256(abi.encode(message));
@@ -70,10 +72,9 @@ contract AvailBridgeTest is Test {
         assertEq(avail.totalSupply(), amount);
     }
 
-    function test_receiveETH(bytes32 rangeHash, bytes32 from, address to, uint256 amount, uint64 messageId) external {
-        // while technically contracts can receive ETH, foundry fuzzes with a lot of random contracts and precompiles
-        // that cannot receive ETH
-        vm.assume(amount != 0 && to.code.length == 0 && uint256(uint160(to)) > 9);
+    function test_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
+        vm.assume(amount != 0);
+        address to = makeAddr("to");
         vm.deal(address(bridge), amount);
         AvailBridge.Message memory message = AvailBridge.Message(
             0x02,
@@ -102,11 +103,11 @@ contract AvailBridgeTest is Test {
         bytes32 rangeHash,
         bytes32 assetId,
         bytes32 from,
-        address to,
         uint256 amount,
         uint64 messageId
     ) external {
-        vm.assume(amount != 0 && to != address(0) && to != address(bridge));
+        vm.assume(amount != 0);
+        address to = makeAddr("to");
         ERC20Mock token = new ERC20Mock();
         token.mint(address(bridge), amount);
         bytes32[] memory assetIdArr = new bytes32[](1);
@@ -132,8 +133,9 @@ contract AvailBridgeTest is Test {
         assertEq(newBalance, balance + amount);
     }
 
-    function test_sendAVL(address from, bytes32 to, uint256 amount) external {
-        vm.assume(from != address(0) && to != bytes32(0) && amount != 0 && from != address(admin));
+    function test_sendAVL(bytes32 to, uint256 amount) external {
+        vm.assume(to != bytes32(0) && amount != 0);
+        address from = makeAddr("from");
         vm.prank(address(bridge));
         avail.mint(from, amount);
         AvailBridge.Message memory message =
@@ -146,10 +148,9 @@ contract AvailBridgeTest is Test {
         assertEq(avail.totalSupply(), 0);
     }
 
-    function test_sendETH(address from, bytes32 to, uint256 amount) external {
-        vm.assume(
-            from != address(0) && to != bytes32(0) && amount != 0 && from != address(admin) && from != address(bridge)
-        );
+    function test_sendETH(bytes32 to, uint256 amount) external {
+        vm.assume(to != bytes32(0) && amount != 0);
+        address from = makeAddr("from");
         vm.deal(from, amount);
         AvailBridge.Message memory message = AvailBridge.Message(
             0x02,
@@ -168,8 +169,9 @@ contract AvailBridgeTest is Test {
         assertEq(from.balance, balance - amount);
     }
 
-    function test_sendERC20(bytes32 assetId, address from, bytes32 to, uint256 amount) external {
-        vm.assume(from != address(0) && to != bytes32(0) && amount != 0 && from != address(admin));
+    function test_sendERC20(bytes32 assetId, bytes32 to, uint256 amount) external {
+        vm.assume(to != bytes32(0) && amount != 0);
+        address from = makeAddr("from");
         ERC20Mock token = new ERC20Mock();
         token.mint(from, amount);
         bytes32[] memory assetIdArr = new bytes32[](1);
@@ -187,5 +189,67 @@ contract AvailBridgeTest is Test {
         assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
         assertEq(token.balanceOf(from), 0);
         assertEq(token.balanceOf(address(bridge)), amount);
+    }
+
+    function test_verifyBlobLeaf(bytes32[16] calldata preimages, bytes32[16] calldata c_dataRoots, bytes32 rangeHash, uint256 rand, bytes32 bridgeRoot) external {
+        // we use a fixed size array because the fuzzer rejects too many inputs with arbitrary lengths
+        bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
+        bytes32[] memory leaves = new bytes32[](preimages.length);
+        for (uint256 i = 0; i < preimages.length; ) {
+            dataRoots[i] = c_dataRoots[i];
+            leaves[i] = keccak256(abi.encode(preimages[i]));
+            unchecked {
+                ++i;
+            }
+        }
+        bytes32 blobRoot = getRoot(leaves);
+        bytes32 dataRoot = hashLeafPairs(blobRoot, bridgeRoot);
+        // set dataRoot at this point in the array
+        dataRoots[rand % dataRoots.length] = dataRoot;
+        bytes32 dataRootCommitment = getRoot(dataRoots);
+        bytes32[] memory dataRootProof = getProof(dataRoots, rand % dataRoots.length);
+        vectorx.set(rangeHash, dataRootCommitment);
+        for (uint256 i = 0; i < leaves.length; ) {
+            bytes32[] memory leafProof = getProof(leaves, i);
+            AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(dataRootProof, leafProof, rangeHash, rand % dataRoots.length, blobRoot, bridgeRoot, preimages[i], i);
+            assertTrue(bridge.verifyBlobLeaf(input));
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function test_verifyBridgeLeaf(bytes32[16] calldata c_leaves, bytes32[16] calldata c_dataRoots, bytes32 rangeHash, uint256 rand, bytes32 blobRoot) external {
+        // we use a fixed size array because the fuzzer rejects too many inputs with arbitrary lengths
+        bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
+        bytes32[] memory leaves = new bytes32[](c_leaves.length);
+        for (uint256 i = 0; i < c_leaves.length; ) {
+            dataRoots[i] = c_dataRoots[i];
+            leaves[i] = c_leaves[i];
+            unchecked {
+                ++i;
+            }
+        }
+        bytes32 bridgeRoot = getRoot(leaves);
+        bytes32 dataRoot = hashLeafPairs(blobRoot, bridgeRoot);
+        // set dataRoot at this point in the array
+        dataRoots[rand % dataRoots.length] = dataRoot;
+        bytes32 dataRootCommitment = getRoot(dataRoots);
+        bytes32[] memory dataRootProof = getProof(dataRoots, rand % dataRoots.length);
+        vectorx.set(rangeHash, dataRootCommitment);
+        for (uint256 i = 0; i < leaves.length; ) {
+            bytes32[] memory leafProof = getProof(leaves, i);
+            AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(dataRootProof, leafProof, rangeHash, rand % dataRoots.length, blobRoot, bridgeRoot, leaves[i], i);
+            assertTrue(bridge.verifyBridgeLeaf(input));
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function hashLeafPairs(bytes32 left, bytes32 right) public pure override returns (bytes32) {
+        return keccak256(abi.encode(left, right));
     }
 }
