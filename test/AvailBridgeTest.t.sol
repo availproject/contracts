@@ -34,6 +34,12 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.owner() == owner, true);
     }
 
+    function test_updateVectorx(IVectorx newVectorx) external {
+        vm.prank(owner);
+        bridge.updateVectorx(newVectorx);
+        assertEq(address(bridge.vectorx()), address(newVectorx));
+    }
+
     function test_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId) external {
         MessageReceiverMock messageReceiver = new MessageReceiverMock();
         messageReceiver.initialize(address(bridge));
