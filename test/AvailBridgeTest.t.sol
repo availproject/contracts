@@ -40,6 +40,27 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(address(bridge.vectorx()), address(newVectorx));
     }
 
+    function testRevertArrayLengthMismatch_updateTokens(uint8 len1, uint8 len2) external {
+        // using len > uint8 slows tests by a *lot*
+        vm.assume(len1 != len2);
+        bytes32[] memory assetIds = new bytes32[](len1);
+        address[] memory addresses = new address[](len2);
+        vm.prank(owner);
+        vm.expectRevert(AvailBridge.ArrayLengthMismatch.selector);
+        bridge.updateTokens(assetIds, addresses);
+    }
+
+    function testRevertInvalidMessage_receiveMessage(bytes1 prefix) external {
+        vm.assume(prefix != 0x01);
+        AvailBridge.Message memory message =
+            AvailBridge.Message(prefix, bytes32(0), bytes32(0), 1, 2, "", 0);
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            new bytes32[](0), new bytes32[](0), bytes32(0), 0, bytes32(0), bytes32(0), bytes32(0), 0
+        );
+        vm.expectRevert(AvailBridge.InvalidMessage.selector);
+        bridge.receiveMessage(message, input);
+    }
+
     function test_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId) external {
         MessageReceiverMock messageReceiver = new MessageReceiverMock();
         messageReceiver.initialize(address(bridge));
@@ -57,6 +78,17 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectCall(address(messageReceiver), abi.encodeCall(messageReceiver.onAvailMessage, (from, data)));
         bridge.receiveMessage(message, input);
+    }
+
+    function testRevertInvalidAssetId_receiveAvail(bytes32 assetId) external {
+        vm.assume(assetId != 0x0);
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x02, bytes32(0), bytes32(0), 1, 2, abi.encode(assetId, 0), 0);
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            new bytes32[](0), new bytes32[](0), bytes32(0), 0, bytes32(0), bytes32(0), bytes32(0), 0
+        );
+        vm.expectRevert(AvailBridge.InvalidAssetId.selector);
+        bridge.receiveAVL(message, input);
     }
 
     function test_receiveAVL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {

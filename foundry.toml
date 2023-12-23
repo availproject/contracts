@@ -10,4 +10,7 @@ via_ir = true
 runs = 10000
 max_test_rejects = 999999
 
+[rpc_endpoints]
+sepolia = "https://rpc.ankr.com/eth_sepolia"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
