@@ -193,9 +193,8 @@ contract AvailBridgeTest is Test, MurkyBase {
         bytes32 messageHash = keccak256(abi.encode(message));
 
         bytes32[] memory emptyArr;
-        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
-            emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0
-        );
+        AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
 
         // data root is not set in vectorx!
         vm.expectRevert(AvailBridge.DataRootCommitmentEmpty.selector);
@@ -224,9 +223,8 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         bytes32[] memory emptyArr;
         // give fuzzed wrong proof
-        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
-            wrongProof, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0
-        );
+        AvailBridge.MerkleProofInput memory input =
+            AvailBridge.MerkleProofInput(wrongProof, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
 
         vm.expectRevert(AvailBridge.InvalidDataRootProof.selector);
         bridge.receiveMessage(message, input);
