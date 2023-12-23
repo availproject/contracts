@@ -80,7 +80,12 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.receiveMessage(message, input);
     }
 
-    function testRevertAlreadyBridged_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId) external {
+    function testRevertAlreadyBridged_receiveMessage(
+        bytes32 rangeHash,
+        bytes calldata data,
+        bytes32 from,
+        uint64 messageId
+    ) external {
         MessageReceiverMock messageReceiver = new MessageReceiverMock();
         messageReceiver.initialize(address(bridge));
 
@@ -101,7 +106,12 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.receiveMessage(message, input);
     }
 
-    function testRevertInvalidLeaf_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId) external {
+    function testRevertInvalidLeaf_receiveMessage(
+        bytes32 rangeHash,
+        bytes calldata data,
+        bytes32 from,
+        uint64 messageId
+    ) external {
         MessageReceiverMock messageReceiver = new MessageReceiverMock();
         messageReceiver.initialize(address(bridge));
 
@@ -113,16 +123,24 @@ contract AvailBridgeTest is Test, MurkyBase {
         vectorx.set(rangeHash, dataRoot);
 
         bytes32[] memory emptyArr;
-        // hash the hash to generate a wrong leaf 
-        AvailBridge.MerkleProofInput memory input =
-            AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, keccak256(abi.encode(messageHash)), 0);
+        // hash the hash to generate a wrong leaf
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, keccak256(abi.encode(messageHash)), 0
+        );
 
         vm.expectRevert(AvailBridge.InvalidLeaf.selector);
         bridge.receiveMessage(message, input);
         assertEq(bridge.isBridged(messageHash), false);
     }
 
-    function testRevertInvalidMerkleProof_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId, bytes32[] calldata wrongProof, uint256 wrongLeafIndex) external {
+    function testRevertInvalidMerkleProof_receiveMessage(
+        bytes32 rangeHash,
+        bytes calldata data,
+        bytes32 from,
+        uint64 messageId,
+        bytes32[] calldata wrongProof,
+        uint256 wrongLeafIndex
+    ) external {
         vm.assume(wrongLeafIndex != 0 && wrongProof.length != 0);
         MessageReceiverMock messageReceiver = new MessageReceiverMock();
         messageReceiver.initialize(address(bridge));
@@ -136,8 +154,9 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         bytes32[] memory emptyArr;
         // give a fuzzed wrong index
-        AvailBridge.MerkleProofInput memory input =
-            AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, wrongLeafIndex);
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, wrongLeafIndex
+        );
 
         vm.expectRevert(AvailBridge.InvalidMerkleProof.selector);
         bridge.receiveMessage(message, input);
@@ -151,8 +170,9 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.isBridged(messageHash), false);
 
         // give a fuzzed wrong proof and index
-        input =
-            AvailBridge.MerkleProofInput(emptyArr, wrongProof, rangeHash, 0, bytes32(0), messageHash, messageHash, wrongLeafIndex);
+        input = AvailBridge.MerkleProofInput(
+            emptyArr, wrongProof, rangeHash, 0, bytes32(0), messageHash, messageHash, wrongLeafIndex
+        );
 
         vm.expectRevert(AvailBridge.InvalidMerkleProof.selector);
         bridge.receiveMessage(message, input);
@@ -200,7 +220,9 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.receiveETH(message, input);
     }
 
-    function testRevertUnlockFailed_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
+    function testRevertUnlockFailed_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId)
+        external
+    {
         vm.assume(amount != 0);
         address to = makeAddr("to");
         vm.deal(address(bridge), amount);
@@ -359,9 +381,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(token.balanceOf(address(bridge)), amount);
     }
 
-    function testRevertBlobRootEmpty_verifyBlobLeaf(
-        AvailBridge.MerkleProofInput memory input
-    ) external {
+    function testRevertBlobRootEmpty_verifyBlobLeaf(AvailBridge.MerkleProofInput memory input) external {
         input.blobRoot = 0x0;
         vm.expectRevert(AvailBridge.BlobRootEmpty.selector);
         bridge.verifyBlobLeaf(input);
@@ -403,9 +423,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         }
     }
 
-    function testRevertBridgeRootEmpty_verifyBridgeLeaf(
-        AvailBridge.MerkleProofInput memory input
-    ) external {
+    function testRevertBridgeRootEmpty_verifyBridgeLeaf(AvailBridge.MerkleProofInput memory input) external {
         input.bridgeRoot = 0x0;
         vm.expectRevert(AvailBridge.BridgeRootEmpty.selector);
         bridge.verifyBridgeLeaf(input);
