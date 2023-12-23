@@ -13,25 +13,25 @@ import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 contract WrappedAvail is ERC20Permit, IWrappedAvail {
     address public immutable bridge;
 
-    error OnlyBridge();
+    error OnlyAvailBridge();
 
     constructor(address _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
         // slither-disable-next-line missing-zero-check
         bridge = _bridge;
     }
 
-    modifier onlyBridge() {
+    modifier onlyAvailBridge() {
         if (msg.sender != bridge) {
-            revert OnlyBridge();
+            revert OnlyAvailBridge();
         }
         _;
     }
 
-    function mint(address destination, uint256 amount) external onlyBridge {
+    function mint(address destination, uint256 amount) external onlyAvailBridge {
         _mint(destination, amount);
     }
 
-    function burn(address from, uint256 amount) external onlyBridge {
+    function burn(address from, uint256 amount) external onlyAvailBridge {
         _burn(from, amount);
     }
 }
