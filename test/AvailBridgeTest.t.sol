@@ -179,6 +179,78 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.isBridged(messageHash), false);
     }
 
+    function testRevertDataRootCommitmentEmpty_receiveMessage(
+        bytes32 rangeHash,
+        bytes calldata data,
+        bytes32 from,
+        uint64 messageId
+    ) external {
+        MessageReceiverMock messageReceiver = new MessageReceiverMock();
+        messageReceiver.initialize(address(bridge));
+
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x01, from, bytes32(bytes20(address(messageReceiver))), 1, 2, data, messageId);
+        bytes32 messageHash = keccak256(abi.encode(message));
+
+        bytes32[] memory emptyArr;
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0
+        );
+
+        // data root is not set in vectorx!
+        vm.expectRevert(AvailBridge.DataRootCommitmentEmpty.selector);
+        bridge.receiveMessage(message, input);
+        assertEq(bridge.isBridged(messageHash), false);
+    }
+
+    function testRevertInvalidDataRootProof_receiveMessage(
+        bytes32 rangeHash,
+        bytes calldata data,
+        bytes32 from,
+        uint64 messageId,
+        bytes32[] calldata wrongProof,
+        uint256 wrongIndex
+    ) external {
+        vm.assume(wrongIndex != 0 && wrongProof.length != 0);
+        MessageReceiverMock messageReceiver = new MessageReceiverMock();
+        messageReceiver.initialize(address(bridge));
+
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x01, from, bytes32(bytes20(address(messageReceiver))), 1, 2, data, messageId);
+        bytes32 messageHash = keccak256(abi.encode(message));
+        bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
+
+        vectorx.set(rangeHash, dataRoot);
+
+        bytes32[] memory emptyArr;
+        // give fuzzed wrong proof
+        AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
+            wrongProof, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0
+        );
+
+        vm.expectRevert(AvailBridge.InvalidDataRootProof.selector);
+        bridge.receiveMessage(message, input);
+        assertEq(bridge.isBridged(messageHash), false);
+
+        // give fuzzed wrong index
+        input = AvailBridge.MerkleProofInput(
+            emptyArr, emptyArr, rangeHash, wrongIndex, bytes32(0), messageHash, messageHash, 0
+        );
+
+        vm.expectRevert(AvailBridge.InvalidDataRootProof.selector);
+        bridge.receiveMessage(message, input);
+        assertEq(bridge.isBridged(messageHash), false);
+
+        // give fuzzed wrong proof and wrong index
+        input = AvailBridge.MerkleProofInput(
+            wrongProof, emptyArr, rangeHash, wrongIndex, bytes32(0), messageHash, messageHash, 0
+        );
+
+        vm.expectRevert(AvailBridge.InvalidDataRootProof.selector);
+        bridge.receiveMessage(message, input);
+        assertEq(bridge.isBridged(messageHash), false);
+    }
+
     function testRevertInvalidAssetId_receiveAvail(bytes32 assetId) external {
         vm.assume(assetId != 0x0);
         AvailBridge.Message memory message =
