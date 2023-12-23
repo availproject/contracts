@@ -52,8 +52,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
     function testRevertInvalidMessage_receiveMessage(bytes1 prefix) external {
         vm.assume(prefix != 0x01);
-        AvailBridge.Message memory message =
-            AvailBridge.Message(prefix, bytes32(0), bytes32(0), 1, 2, "", 0);
+        AvailBridge.Message memory message = AvailBridge.Message(prefix, bytes32(0), bytes32(0), 1, 2, "", 0);
         AvailBridge.MerkleProofInput memory input = AvailBridge.MerkleProofInput(
             new bytes32[](0), new bytes32[](0), bytes32(0), 0, bytes32(0), bytes32(0), bytes32(0), 0
         );

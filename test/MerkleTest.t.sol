@@ -60,9 +60,12 @@ contract MerkleTest is Test, MurkyBase {
         assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, wrongRoot, proof));
     }
 
-    function test_checkMembershipLargeTree(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot)
-        external
-    {
+    function test_checkMembershipLargeTree(
+        bytes32[] memory leaves,
+        uint256 index,
+        uint256 wrongIndex,
+        bytes32 wrongRoot
+    ) external {
         vm.assume(leaves.length >= 128 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);
@@ -84,12 +87,15 @@ contract MerkleTest is Test, MurkyBase {
         assertFalse(merkleUser.checkMembership(randomDataHash, wrongIndex, wrongRoot, proof));
     }
 
-    function test_checkMembershipLargeTree2(bytes32[256] memory c_leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot)
-        external
-    {
+    function test_checkMembershipLargeTree2(
+        bytes32[256] memory c_leaves,
+        uint256 index,
+        uint256 wrongIndex,
+        bytes32 wrongRoot
+    ) external {
         vm.assume(index < c_leaves.length && wrongIndex != index);
         bytes32[] memory leaves = new bytes32[](c_leaves.length);
-        for (uint256 i = 0; i < c_leaves.length; ) {
+        for (uint256 i = 0; i < c_leaves.length;) {
             leaves[i] = c_leaves[i];
             unchecked {
                 ++i;
