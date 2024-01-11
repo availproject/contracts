@@ -11,7 +11,8 @@ import {Merkle} from "src/lib/Merkle.sol";
 import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 
 /**
  * @author  @QEDK (Avail)
@@ -19,7 +20,12 @@ import {AccessControlDefaultAdminRulesUpgradeable} from "lib/openzeppelin-contra
  * @notice  An arbitrary message bridge between Avail <-> Ethereum
  * @custom:security security@availproject.org
  */
-contract AvailBridge is Initializable, ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+contract AvailBridge is
+    Initializable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable
+{
     using Merkle for bytes32[];
     using SafeERC20 for IERC20;
 
@@ -98,7 +104,10 @@ contract AvailBridge is Initializable, ReentrancyGuardUpgradeable, PausableUpgra
         _;
     }
 
-    function initialize(IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx) external initializer {
+    function initialize(IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx)
+        external
+        initializer
+    {
         vectorx = newVectorx;
         avail = newAvail;
         __AccessControlDefaultAdminRules_init(0, governance);
@@ -133,7 +142,10 @@ contract AvailBridge is Initializable, ReentrancyGuardUpgradeable, PausableUpgra
      * @param   assetIds  Asset IDs to update
      * @param   tokenAddresses  Token addresses to update
      */
-    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         if (assetIds.length != tokenAddresses.length) {
             revert ArrayLengthMismatch();
         }
@@ -306,7 +318,11 @@ contract AvailBridge is Initializable, ReentrancyGuardUpgradeable, PausableUpgra
      * @param   recipient  Recipient of the asset on Avail
      * @param   amount  Amount of ERC20 tokens to bridge
      */
-    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
+    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount)
+        external
+        whenNotPaused
+        checkDestAmt(recipient, amount)
+    {
         address token = tokens[assetId];
         if (token == address(0)) {
             revert InvalidAssetId();

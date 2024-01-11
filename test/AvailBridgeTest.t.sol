@@ -65,7 +65,11 @@ contract AvailBridgeTest is Test, MurkyBase {
     }
 
     function testRevertOnlyPauser_setPaused(bool status) external {
-        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), msg.sender, keccak256("PAUSER_ROLE")));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                (IAccessControl.AccessControlUnauthorizedAccount.selector), msg.sender, keccak256("PAUSER_ROLE")
+            )
+        );
         vm.prank(msg.sender);
         bridge.setPaused(status);
     }
