@@ -39,7 +39,7 @@ library Merkle {
                     if iszero(lt(i, end)) { break }
                 }
             }
-            // require tree to be balanced
+            // check if index is zeroed out (because tree is balanced) and leaf is equal to root
             isValid := and(eq(leaf, root), iszero(index))
         }
     }
