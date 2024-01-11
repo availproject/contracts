@@ -5,22 +5,20 @@ import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {AvailBridge} from "src/AvailBridge.sol";
-import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
+import {WrappedAvail} from "src/WrappedAvail.sol";
 import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
-import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
+import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {Script} from "forge-std/Script.sol";
 
 contract GetProofMockScript is Script {
     function run() external {
         vm.startBroadcast();
-        VectorxMock vectorx = new VectorxMock();
-        ProxyAdmin admin = new ProxyAdmin(msg.sender);
+        address admin = vm.envAddress("ADMIN");
+        ProxyAdmin proxyAdmin = new ProxyAdmin(admin);
         address impl = address(new AvailBridge());
-        AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
-        ERC20Mock avail = new ERC20Mock();
-        bridge.initialize(IWrappedAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
-        avail.mint(msg.sender, 1 ether);
-        bridge.sendAVL(bytes32(uint256(1)), 1 ether);
+        AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(proxyAdmin), "")));
+        WrappedAvail avail = new WrappedAvail(address(bridge));
+        bridge.initialize(IWrappedAvail(address(avail)), admin, admin, IVectorx(0x5ac10644a873AAcd288775A90d6D0303496A4304));
         vm.stopBroadcast();
     }
 }

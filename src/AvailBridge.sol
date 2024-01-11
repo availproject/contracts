@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.23;
 
-import {
-    OwnableUpgradeable,
-    Ownable2StepUpgradeable
-} from "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
@@ -14,6 +10,8 @@ import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {Merkle} from "src/lib/Merkle.sol";
 import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
+import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 
 /**
  * @author  @QEDK (Avail)
@@ -21,7 +19,7 @@ import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
  * @notice  An arbitrary message bridge between Avail <-> Ethereum
  * @custom:security security@availproject.org
  */
-contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
+contract AvailBridge is Initializable, ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
     using Merkle for bytes32[];
     using SafeERC20 for IERC20;
 
@@ -52,6 +50,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
     // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
+    bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     IVectorx public vectorx;
     IWrappedAvail public avail;
     uint256 public messageId;
@@ -99,17 +98,32 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
         _;
     }
 
-    function initialize(IWrappedAvail newAvail, address governance, IVectorx newVectorx) external initializer {
+    function initialize(IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx) external initializer {
         vectorx = newVectorx;
         avail = newAvail;
-        __Ownable_init_unchained(governance);
+        __AccessControlDefaultAdminRules_init(0, governance);
+        _grantRole(PAUSER_ROLE, pauser);
+        __Pausable_init();
+        __ReentrancyGuard_init();
+    }
+
+    /**
+     * @notice  Updates pause status of the bridge
+     * @param   status  New pause status
+     */
+    function setPaused(bool status) external onlyRole(PAUSER_ROLE) {
+        if (status) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /**
      * @notice  Update the address of the VectorX contract
      * @param   newVectorx  Address of new VectorX contract
      */
-    function updateVectorx(IVectorx newVectorx) external onlyOwner {
+    function updateVectorx(IVectorx newVectorx) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vectorx = newVectorx;
     }
 
@@ -119,7 +133,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      * @param   assetIds  Asset IDs to update
      * @param   tokenAddresses  Token addresses to update
      */
-    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyOwner {
+    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (assetIds.length != tokenAddresses.length) {
             revert ArrayLengthMismatch();
         }
@@ -139,6 +153,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      */
     function receiveMessage(Message calldata message, MerkleProofInput calldata input)
         external
+        whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         nonReentrant
     {
@@ -162,6 +177,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      */
     function receiveAVL(Message calldata message, MerkleProofInput calldata input)
         external
+        whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
     {
@@ -187,6 +203,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      */
     function receiveETH(Message calldata message, MerkleProofInput calldata input)
         external
+        whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
         nonReentrant
@@ -217,6 +234,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      */
     function receiveERC20(Message calldata message, MerkleProofInput calldata input)
         external
+        whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
         nonReentrant
@@ -242,7 +260,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      * @param   recipient  Recipient of the AVL tokens on Avail
      * @param   amount  Amount of AVL tokens to bridge
      */
-    function sendAVL(bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
+    function sendAVL(bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
         uint256 id = messageId++;
         Message memory message = Message(
             TOKEN_TX_PREFIX,
@@ -265,7 +283,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      * @dev     This function is used for ETH transfers from Ethereum to Avail
      * @param   recipient  Recipient of the ETH on Avail
      */
-    function sendETH(bytes32 recipient) external payable checkDestAmt(recipient, msg.value) {
+    function sendETH(bytes32 recipient) external payable whenNotPaused checkDestAmt(recipient, msg.value) {
         uint256 id = messageId++;
         Message memory message = Message(
             TOKEN_TX_PREFIX,
@@ -288,7 +306,7 @@ contract AvailBridge is Initializable, Ownable2StepUpgradeable, ReentrancyGuardU
      * @param   recipient  Recipient of the asset on Avail
      * @param   amount  Amount of ERC20 tokens to bridge
      */
-    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external checkDestAmt(recipient, amount) {
+    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
         address token = tokens[assetId];
         if (token == address(0)) {
             revert InvalidAssetId();

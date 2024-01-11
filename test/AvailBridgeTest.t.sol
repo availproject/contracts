@@ -11,6 +11,7 @@ import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
 import {Vm, Test} from "forge-std/Test.sol";
 import {MurkyBase} from "lib/murky/src/common/MurkyBase.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
@@ -18,15 +19,17 @@ contract AvailBridgeTest is Test, MurkyBase {
     VectorxMock public vectorx;
     ProxyAdmin public admin;
     address public owner;
+    address public pauser;
     bytes public constant revertCode = "5F5FFD";
 
     function setUp() external {
         vectorx = new VectorxMock();
         admin = new ProxyAdmin(msg.sender);
+        pauser = makeAddr("pauser");
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         avail = new WrappedAvail(address(bridge));
-        bridge.initialize(IWrappedAvail(address(avail)), msg.sender, IVectorx(vectorx));
+        bridge.initialize(IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
     }
 
@@ -59,6 +62,20 @@ contract AvailBridgeTest is Test, MurkyBase {
         );
         vm.expectRevert(AvailBridge.InvalidMessage.selector);
         bridge.receiveMessage(message, input);
+    }
+
+    function testRevertOnlyPauser_setPaused(bool status) external {
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), msg.sender, keccak256("PAUSER_ROLE")));
+        vm.prank(msg.sender);
+        bridge.setPaused(status);
+    }
+
+    function test_setPaused() external {
+        vm.startPrank(pauser);
+        bridge.setPaused(true);
+        assertEq(bridge.paused(), true);
+        bridge.setPaused(false);
+        assertEq(bridge.paused(), false);
     }
 
     function test_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId) external {
