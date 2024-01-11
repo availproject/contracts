@@ -4,15 +4,15 @@ pragma solidity ^0.8.23;
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
-import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IVectorx} from "src/interfaces/IVectorx.sol";
-import {Merkle} from "src/lib/Merkle.sol";
-import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
-import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Merkle} from "src/lib/Merkle.sol";
+import {IVectorx} from "src/interfaces/IVectorx.sol";
+import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 
 /**
  * @author  @QEDK (Avail)

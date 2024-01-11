@@ -4,14 +4,14 @@ pragma solidity ^0.8.23;
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {AvailBridge} from "src/AvailBridge.sol";
 import {WrappedAvail, IWrappedAvail} from "src/WrappedAvail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
-import {Vm, Test} from "forge-std/Test.sol";
 import {MurkyBase} from "lib/murky/src/common/MurkyBase.sol";
-import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import {Vm, Test} from "forge-std/Test.sol";
 
 contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
