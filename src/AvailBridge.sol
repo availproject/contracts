@@ -30,23 +30,38 @@ contract AvailBridge is
     using SafeERC20 for IERC20;
 
     struct Message {
+        // single-byte prefix representing the message type
         bytes1 messageType;
+        // address of message sender
         bytes32 from;
+        // address of message receiver
         bytes32 to;
+        // origin chain code
         uint32 originDomain;
+        // destination chain code
         uint32 destinationDomain;
+        // data being sent
         bytes data;
+        // nonce
         uint64 messageId;
     }
 
     struct MerkleProofInput {
+        // proof of inclusion for the data root
         bytes32[] dataRootProof;
+        // proof of inclusion of leaf within blob/bridge root
         bytes32[] leafProof;
+        // abi.encodePacked(startBlock, endBlock) of header range commitment on vectorx
         bytes32 rangeHash;
+        // index of the data root in the commitment tree
         uint256 dataRootIndex;
+        // blob root to check proof against, or reconstruct the data root
         bytes32 blobRoot;
+        // bridge root to check proof against, or reconstruct the data root
         bytes32 bridgeRoot;
+        // leaf being proven
         bytes32 leaf;
+        // index of the leaf in the blob/bridge root tree
         uint256 leafIndex;
     }
 
@@ -61,8 +76,11 @@ contract AvailBridge is
     IWrappedAvail public avail;
     uint256 public messageId;
 
+    // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;
+    // map message hashes to their message ID, used for Ethereum -> Avail messages
     mapping(uint256 => bytes32) public isSent;
+    // map Avail asset IDs to an Ethereum address
     mapping(bytes32 => address) public tokens;
 
     event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
@@ -91,7 +109,7 @@ contract AvailBridge is
     }
 
     modifier onlyTokenTransfer(bytes1 messageType) {
-        if (messageType != 0x02) {
+        if (messageType != TOKEN_TX_PREFIX) {
             revert InvalidFungibleTokenTransfer();
         }
         _;
@@ -104,6 +122,13 @@ contract AvailBridge is
         _;
     }
 
+    /**
+     * @notice  Initializes the AvailBridge contract
+     * @param   newAvail  Address of the WAVL token contract
+     * @param   governance  Address of the governance multisig
+     * @param   pauser  Address of the pauser multisig
+     * @param   newVectorx  Address of the VectorX contract
+     */
     function initialize(IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx)
         external
         initializer
@@ -175,6 +200,7 @@ contract AvailBridge is
 
         _checkBridgeLeaf(message, input);
 
+        // downcast SCALE-encoded bytes to an Ethereum address
         address dest = address(bytes20(message.to));
         IMessageReceiver(dest).onAvailMessage(message.from, message.data);
 
@@ -200,6 +226,7 @@ contract AvailBridge is
 
         _checkBridgeLeaf(message, input);
 
+        // downcast SCALE-encoded bytes to an Ethereum address
         address dest = address(bytes20(message.to));
 
         emit MessageReceived(message.from, dest, message.messageId);
@@ -227,6 +254,7 @@ contract AvailBridge is
 
         _checkBridgeLeaf(message, input);
 
+        // downcast SCALE-encoded bytes to an Ethereum address
         address dest = address(bytes20(message.to));
 
         emit MessageReceived(message.from, dest, message.messageId);
@@ -259,6 +287,7 @@ contract AvailBridge is
 
         _checkBridgeLeaf(message, input);
 
+        // downcast SCALE-encoded bytes to an Ethereum address
         address dest = address(bytes20(message.to));
 
         emit MessageReceived(message.from, dest, message.messageId);
@@ -283,6 +312,7 @@ contract AvailBridge is
             abi.encode(bytes32(0), amount),
             uint64(id)
         );
+        // store message hash to be retrieved later by our light client
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
@@ -306,6 +336,7 @@ contract AvailBridge is
             abi.encode(ETH_ASSET_ID, msg.value),
             uint64(id)
         );
+        // store message hash to be retrieved later by our light client
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
@@ -337,6 +368,7 @@ contract AvailBridge is
             abi.encode(assetId, amount),
             uint64(id)
         );
+        // store message hash to be retrieved later by our light client
         isSent[id] = keccak256(abi.encode(message));
 
         emit MessageSent(msg.sender, recipient, id);
