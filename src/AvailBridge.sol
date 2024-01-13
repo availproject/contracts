@@ -65,9 +65,11 @@ contract AvailBridge is
         uint256 leafIndex;
     }
 
+    bytes1 private constant MESSAGE_TX_PREFIX = 0x01;
     bytes1 private constant TOKEN_TX_PREFIX = 0x02;
     uint32 private constant AVAIL_DOMAIN = 1;
     uint32 private constant ETH_DOMAIN = 2;
+    uint32 private constant MAX_DATA_LENGTH = 102_400;
     // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
@@ -75,6 +77,7 @@ contract AvailBridge is
     IVectorx public vectorx;
     IWrappedAvail public avail;
     uint256 public messageId;
+    uint256 public feePerByte = 10000000000000;
 
     // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;
@@ -86,20 +89,22 @@ contract AvailBridge is
     event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
     event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
 
+    error AlreadyBridged();
     error ArrayLengthMismatch();
-    error InvalidDataRootProof();
-    error DataRootCommitmentEmpty();
     error BlobRootEmpty();
     error BridgeRootEmpty();
-    error InvalidLeaf();
+    error DataRootCommitmentEmpty();
+    error ExceedsMaxDataLength();
+    error FeeOutsideRange();
     error InvalidAssetId();
-    error InvalidMerkleProof();
+    error InvalidDataRootProof();
     error InvalidDomain();
     error InvalidDestinationOrAmount();
-    error InvalidMessage();
     error InvalidFungibleTokenTransfer();
+    error InvalidLeaf();
+    error InvalidMerkleProof();
+    error InvalidMessage();
     error UnlockFailed();
-    error AlreadyBridged();
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
@@ -194,7 +199,7 @@ contract AvailBridge is
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         nonReentrant
     {
-        if (message.messageType != 0x01) {
+        if (message.messageType != MESSAGE_TX_PREFIX) {
             revert InvalidMessage();
         }
 
@@ -296,13 +301,50 @@ contract AvailBridge is
     }
 
     /**
+     * @notice  Emits a corresponding arbitrary messag event on Avail
+     * @dev     This function is used for passing arbitrary data from Ethereum to Avail
+     * @param   recipient  Recipient of the message on Avail
+     * @param   data  Data to send
+     */
+    function sendMessage(bytes32 recipient, bytes calldata data) external payable whenNotPaused {
+        uint256 length = data.length;
+        if (length >= MAX_DATA_LENGTH) {
+            revert ExceedsMaxDataLength();
+        }
+        // ensure that fee is within range
+        if (msg.value < (length * feePerByte) || msg.value > (4 * length * feePerByte)) {
+            revert FeeOutsideRange();
+        }
+        uint256 id;
+        unchecked {
+            id = messageId++;
+        }
+        Message memory message = Message(
+            MESSAGE_TX_PREFIX,
+            bytes32(bytes20(msg.sender)),
+            recipient,
+            ETH_DOMAIN,
+            AVAIL_DOMAIN,
+            data,
+            uint64(id)
+        );
+        // store message hash to be retrieved later by our light client
+        isSent[id] = keccak256(abi.encode(message));
+
+        emit MessageSent(msg.sender, recipient, id);
+    }
+
+    /**
      * @notice  Burns amount worth of WAVL tokens and bridges it to the specified recipient on Avail
      * @dev     This function is used for AVL transfers from Ethereum to Avail
      * @param   recipient  Recipient of the AVL tokens on Avail
      * @param   amount  Amount of AVL tokens to bridge
      */
     function sendAVL(bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
-        uint256 id = messageId++;
+        uint256 id;
+        unchecked {
+            id = messageId++;
+        }
         Message memory message = Message(
             TOKEN_TX_PREFIX,
             bytes32(bytes20(msg.sender)),
@@ -326,7 +368,10 @@ contract AvailBridge is
      * @param   recipient  Recipient of the ETH on Avail
      */
     function sendETH(bytes32 recipient) external payable whenNotPaused checkDestAmt(recipient, msg.value) {
-        uint256 id = messageId++;
+        uint256 id;
+        unchecked {
+            id = messageId++;
+        }
         Message memory message = Message(
             TOKEN_TX_PREFIX,
             bytes32(bytes20(msg.sender)),
@@ -358,7 +403,10 @@ contract AvailBridge is
         if (token == address(0)) {
             revert InvalidAssetId();
         }
-        uint256 id = messageId++;
+        uint256 id;
+        unchecked {
+            id = messageId++;
+        }
         Message memory message = Message(
             TOKEN_TX_PREFIX,
             bytes32(bytes20(msg.sender)),
@@ -388,7 +436,7 @@ contract AvailBridge is
         }
         _checkDataRoot(input);
         // leaf must be keccak(blob)
-        // we don't need to check that the leaf is non-zero because hash the pre-image ourselves
+        // we don't need to check that the leaf is non-zero because we hash the pre-image here
         return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encodePacked(input.leaf)));
     }
 
