@@ -18,7 +18,7 @@ contract GetProofMockScript is Script {
         address impl = address(new AvailBridge());
         AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         ERC20Mock avail = new ERC20Mock();
-        bridge.initialize(IWrappedAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
+        bridge.initialize(1000000000000, IWrappedAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
         avail.mint(msg.sender, 1 ether);
         bridge.sendAVL(bytes32(uint256(1)), 1 ether);
         vm.stopBroadcast();

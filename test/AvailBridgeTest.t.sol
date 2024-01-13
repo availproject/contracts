@@ -11,7 +11,7 @@ import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
 import {MurkyBase} from "lib/murky/src/common/MurkyBase.sol";
-import {Vm, Test} from "forge-std/Test.sol";
+import {Vm, Test, console} from "forge-std/Test.sol";
 
 contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
@@ -29,13 +29,19 @@ contract AvailBridgeTest is Test, MurkyBase {
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         avail = new WrappedAvail(address(bridge));
-        bridge.initialize(IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        bridge.initialize(1000000000000, IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
     }
 
     function test_owner() external {
-        assertEq(bridge.owner() != address(0), true);
-        assertEq(bridge.owner() == owner, true);
+        assertNotEq(bridge.owner(), address(0));
+        assertEq(bridge.owner(), owner);
+    }
+
+    function test_setFeePerByte(uint256 feePerByte) external {
+        vm.prank(owner);
+        bridge.updateFeePerByte(feePerByte);
+        assertEq(bridge.feePerByte(), feePerByte);
     }
 
     function test_updateVectorx(IVectorx newVectorx) external {
@@ -406,6 +412,43 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.receiveERC20(message, input);
         uint256 newBalance = token.balanceOf(to);
         assertEq(newBalance, balance + amount);
+    }
+
+    function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes[102_400] calldata c_data, uint256 amount) external {
+        bytes memory data = new bytes(c_data.length);
+        for (uint256 i = 0; i < c_data.length;) {
+            data[i] = bytes1(c_data[i]);
+            unchecked {
+                ++i;
+            }
+        }
+        address from = makeAddr("from");
+        vm.prank(from);
+        vm.deal(from, amount);
+        vm.expectRevert(AvailBridge.ExceedsMaxDataLength.selector);
+        bridge.sendMessage{value: amount}(to, data);
+        assertEq(bridge.isSent(0), 0x0);
+    }
+
+    function testRevertFeeTooLow_sendMessage(bytes32 to, bytes calldata data, uint256 amount) external {
+        vm.assume(data.length < 102_400 && amount < bridge.getFee(data.length));
+        address from = makeAddr("from");
+        vm.prank(from);
+        vm.deal(from, amount);
+        vm.expectRevert(AvailBridge.FeeTooLow.selector);
+        bridge.sendMessage{value: amount}(to, data);
+        assertEq(bridge.isSent(0), 0x0);
+    }
+
+    function test_sendMessage(bytes32 to, bytes calldata data, uint256 amount) external {
+        vm.assume(data.length < 102_400 && amount >= 100000000000 * data.length);
+        address from = makeAddr("from");
+        AvailBridge.Message memory message =
+            AvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
+        vm.prank(from);
+        vm.deal(from, amount);
+        bridge.sendMessage{value: amount}(to, data);
+        assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
     }
 
     function test_sendAVL(bytes32 to, uint256 amount) external {

@@ -77,7 +77,7 @@ contract AvailBridge is
     IVectorx public vectorx;
     IWrappedAvail public avail;
     uint256 public messageId;
-    uint256 public feePerByte = 10000000000000;
+    uint256 public feePerByte;
 
     // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;
@@ -95,7 +95,7 @@ contract AvailBridge is
     error BridgeRootEmpty();
     error DataRootCommitmentEmpty();
     error ExceedsMaxDataLength();
-    error FeeOutsideRange();
+    error FeeTooLow();
     error InvalidAssetId();
     error InvalidDataRootProof();
     error InvalidDomain();
@@ -134,10 +134,11 @@ contract AvailBridge is
      * @param   pauser  Address of the pauser multisig
      * @param   newVectorx  Address of the VectorX contract
      */
-    function initialize(IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx)
+    function initialize(uint256 newFeePerByte, IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx)
         external
         initializer
     {
+        feePerByte = newFeePerByte;
         vectorx = newVectorx;
         avail = newAvail;
         __AccessControlDefaultAdminRules_init(0, governance);
@@ -185,6 +186,15 @@ contract AvailBridge is
                 ++i;
             }
         }
+    }
+
+    /**
+     * @notice  Function to update the fee per byte value
+     * @dev     Only callable by governance
+     * @param   newFeePerByte  New fee per byte value
+     */
+    function updateFeePerByte(uint256 newFeePerByte) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feePerByte = newFeePerByte;
     }
 
     /**
@@ -311,9 +321,9 @@ contract AvailBridge is
         if (length >= MAX_DATA_LENGTH) {
             revert ExceedsMaxDataLength();
         }
-        // ensure that fee is within range
-        if (msg.value < (length * feePerByte) || msg.value > (4 * length * feePerByte)) {
-            revert FeeOutsideRange();
+        // ensure that fee is above minimum amount
+        if (msg.value < getFee(length)) {
+            revert FeeTooLow();
         }
         uint256 id;
         unchecked {
@@ -454,6 +464,10 @@ contract AvailBridge is
         // leaf must be keccak(message)
         // we don't need to check that the leaf is non-zero because we check that the root is non-zero
         return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
+    }
+
+    function getFee(uint256 length) public view returns (uint256) {
+        return length * feePerByte;
     }
 
     /**
