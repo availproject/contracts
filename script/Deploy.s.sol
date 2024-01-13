@@ -19,7 +19,7 @@ contract GetProofMockScript is Script {
         AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(proxyAdmin), "")));
         WrappedAvail avail = new WrappedAvail(address(bridge));
         bridge.initialize(
-            1000000000000,
+            10000000000,
             IWrappedAvail(address(avail)),
             admin,
             admin,

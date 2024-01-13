@@ -29,7 +29,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         avail = new WrappedAvail(address(bridge));
-        bridge.initialize(1000000000000, IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        bridge.initialize(10000000000, IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
     }
 
