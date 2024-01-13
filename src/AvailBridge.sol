@@ -134,10 +134,13 @@ contract AvailBridge is
      * @param   pauser  Address of the pauser multisig
      * @param   newVectorx  Address of the VectorX contract
      */
-    function initialize(uint256 newFeePerByte, IWrappedAvail newAvail, address governance, address pauser, IVectorx newVectorx)
-        external
-        initializer
-    {
+    function initialize(
+        uint256 newFeePerByte,
+        IWrappedAvail newAvail,
+        address governance,
+        address pauser,
+        IVectorx newVectorx
+    ) external initializer {
         feePerByte = newFeePerByte;
         vectorx = newVectorx;
         avail = newAvail;
@@ -330,13 +333,7 @@ contract AvailBridge is
             id = messageId++;
         }
         Message memory message = Message(
-            MESSAGE_TX_PREFIX,
-            bytes32(bytes20(msg.sender)),
-            recipient,
-            ETH_DOMAIN,
-            AVAIL_DOMAIN,
-            data,
-            uint64(id)
+            MESSAGE_TX_PREFIX, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, data, uint64(id)
         );
         // store message hash to be retrieved later by our light client
         isSent[id] = keccak256(abi.encode(message));

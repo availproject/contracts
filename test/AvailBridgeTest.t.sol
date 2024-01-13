@@ -414,7 +414,9 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(newBalance, balance + amount);
     }
 
-    function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes[102_400] calldata c_data, uint256 amount) external {
+    function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes[102_400] calldata c_data, uint256 amount)
+        external
+    {
         bytes memory data = new bytes(c_data.length);
         for (uint256 i = 0; i < c_data.length;) {
             data[i] = bytes1(c_data[i]);
@@ -443,8 +445,7 @@ contract AvailBridgeTest is Test, MurkyBase {
     function test_sendMessage(bytes32 to, bytes calldata data, uint256 amount) external {
         vm.assume(data.length < 102_400 && amount >= 100000000000 * data.length);
         address from = makeAddr("from");
-        AvailBridge.Message memory message =
-            AvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
+        AvailBridge.Message memory message = AvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
         vm.prank(from);
         vm.deal(from, amount);
         bridge.sendMessage{value: amount}(to, data);
