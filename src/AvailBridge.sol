@@ -463,6 +463,11 @@ contract AvailBridge is
         return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
     }
 
+    /**
+     * @notice  Returns the minimum fee for a given message length
+     * @param   length  Length of the message (in bytes)
+     * @return  uint256  The minimum fee
+     */
     function getFee(uint256 length) public view returns (uint256) {
         return length * feePerByte;
     }
