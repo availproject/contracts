@@ -426,7 +426,9 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.isSent(0), 0x0);
     }
 
-    function testRevertFeeTooLow_sendMessage(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount) external {
+    function testRevertFeeTooLow_sendMessage(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount)
+        external
+    {
         vm.assume(feePerByte != 0 && data.length != 0 && data.length < 102_400);
         vm.prank(owner);
         bridge.updateFeePerByte(feePerByte);
