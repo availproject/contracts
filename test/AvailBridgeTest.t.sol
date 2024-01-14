@@ -414,7 +414,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(newBalance, balance + amount);
     }
 
-    function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes[102_400] calldata c_data, uint256 amount)
+    function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes32[3200] calldata c_data, uint256 amount)
         external
     {
         bytes memory data = abi.encode(c_data);
