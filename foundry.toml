@@ -5,6 +5,7 @@ libs = ["lib"]
 optimizer = true
 optimizer_runs = 999999
 via_ir = true
+evm_version = "shanghai"
 
 [profile.intense.fuzz]
 max_test_rejects = 999999
