@@ -15,7 +15,7 @@ contract WrappedAvail is ERC20Permit, IWrappedAvail {
 
     error OnlyAvailBridge();
 
-    constructor(address _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVL", "Wrapped Avail") {
+    constructor(address _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVAIL", "Wrapped Avail") {
         // slither-disable-next-line missing-zero-check
         bridge = _bridge;
     }

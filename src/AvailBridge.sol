@@ -129,7 +129,7 @@ contract AvailBridge is
 
     /**
      * @notice  Initializes the AvailBridge contract
-     * @param   newAvail  Address of the WAVL token contract
+     * @param   newAvail  Address of the WAVAIL token contract
      * @param   governance  Address of the governance multisig
      * @param   pauser  Address of the pauser multisig
      * @param   newVectorx  Address of the VectorX contract
@@ -226,12 +226,12 @@ contract AvailBridge is
     }
 
     /**
-     * @notice  Takes an AVL transfer message and its proof of inclusion, verifies and executes it (if valid)
-     * @dev     This function is used for AVL transfers from Avail to Ethereum
+     * @notice  Takes an AVAIL transfer message and its proof of inclusion, verifies and executes it (if valid)
+     * @dev     This function is used for AVAIL transfers from Avail to Ethereum
      * @param   message  Message that is used to reconstruct the bridge leaf
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveAVL(Message calldata message, MerkleProofInput calldata input)
+    function receiveAVAIL(Message calldata message, MerkleProofInput calldata input)
         external
         whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
@@ -342,12 +342,12 @@ contract AvailBridge is
     }
 
     /**
-     * @notice  Burns amount worth of WAVL tokens and bridges it to the specified recipient on Avail
-     * @dev     This function is used for AVL transfers from Ethereum to Avail
-     * @param   recipient  Recipient of the AVL tokens on Avail
-     * @param   amount  Amount of AVL tokens to bridge
+     * @notice  Burns amount worth of WAVAIL tokens and bridges it to the specified recipient on Avail
+     * @dev     This function is used for WAVAIL transfers from Ethereum to Avail
+     * @param   recipient  Recipient of the AVAIL tokens on Avail
+     * @param   amount  Amount of AVAIL tokens to bridge
      */
-    function sendAVL(bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
+    function sendAVAIL(bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
         uint256 id;
         unchecked {
             id = messageId++;

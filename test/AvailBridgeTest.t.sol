@@ -284,10 +284,10 @@ contract AvailBridgeTest is Test, MurkyBase {
             new bytes32[](0), new bytes32[](0), bytes32(0), 0, bytes32(0), bytes32(0), bytes32(0), 0
         );
         vm.expectRevert(AvailBridge.InvalidAssetId.selector);
-        bridge.receiveAVL(message, input);
+        bridge.receiveAVAIL(message, input);
     }
 
-    function test_receiveAVL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
+    function test_receiveAVAIL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
         vm.assume(amount != 0);
         address to = makeAddr("to");
         AvailBridge.Message memory message =
@@ -302,7 +302,7 @@ contract AvailBridgeTest is Test, MurkyBase {
             AvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
 
         vm.expectCall(address(avail), abi.encodeCall(avail.mint, (to, amount)));
-        bridge.receiveAVL(message, input);
+        bridge.receiveAVAIL(message, input);
         assertEq(avail.totalSupply(), amount);
     }
 
@@ -453,7 +453,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
     }
 
-    function test_sendAVL(bytes32 to, uint256 amount) external {
+    function test_sendAVAIL(bytes32 to, uint256 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
         vm.prank(address(bridge));
@@ -462,7 +462,7 @@ contract AvailBridgeTest is Test, MurkyBase {
             AvailBridge.Message(0x02, bytes32(bytes20(from)), to, 2, 1, abi.encode(bytes32(0), amount), 0);
         vm.expectCall(address(avail), abi.encodeCall(avail.burn, (from, amount)));
         vm.prank(from);
-        bridge.sendAVL(to, amount);
+        bridge.sendAVAIL(to, amount);
         assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
         assertEq(avail.balanceOf(from), 0);
         assertEq(avail.totalSupply(), 0);

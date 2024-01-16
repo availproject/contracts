@@ -20,7 +20,7 @@ contract GetProofMockScript is Script {
         ERC20Mock avail = new ERC20Mock();
         bridge.initialize(0, IWrappedAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
         avail.mint(msg.sender, 1 ether);
-        bridge.sendAVL(bytes32(uint256(1)), 1 ether);
+        bridge.sendAVAIL(bytes32(uint256(1)), 1 ether);
         vm.stopBroadcast();
     }
 }
