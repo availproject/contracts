@@ -14,8 +14,8 @@ import {console} from "forge-std/console.sol";
 contract SendMessageScript is Script {
     function run() external {
         vm.startBroadcast();
-        address bridgeAddr = vm.envAddress("BRIDGE");
-        AvailBridge bridge = AvailBridge(bridgeAddr);
+        //address bridgeAddr = vm.envAddress("BRIDGE");
+        //AvailBridge bridge = AvailBridge(bridgeAddr);
         // bridge.sendMessage(bytes32(bytes("5GQsUevGEkoxGDJPDWbQiKDxqKmgZ5pGc732x7iXNBa1oAij")), "Hello, World!");
         // console.logBytes32(bridge.isSent(0));
         // AvailBridge.Message memory message = AvailBridge.Message(

@@ -13,6 +13,7 @@ import {Merkle} from "src/lib/Merkle.sol";
 import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
+import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 
 /**
  * @author  @QEDK (Avail)
@@ -24,46 +25,11 @@ contract AvailBridge is
     Initializable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable,
-    AccessControlDefaultAdminRulesUpgradeable
+    AccessControlDefaultAdminRulesUpgradeable,
+    IAvailBridge
 {
     using Merkle for bytes32[];
     using SafeERC20 for IERC20;
-
-    struct Message {
-        // single-byte prefix representing the message type
-        bytes1 messageType;
-        // address of message sender
-        bytes32 from;
-        // address of message receiver
-        bytes32 to;
-        // origin chain code
-        uint32 originDomain;
-        // destination chain code
-        uint32 destinationDomain;
-        // data being sent
-        bytes data;
-        // nonce
-        uint64 messageId;
-    }
-
-    struct MerkleProofInput {
-        // proof of inclusion for the data root
-        bytes32[] dataRootProof;
-        // proof of inclusion of leaf within blob/bridge root
-        bytes32[] leafProof;
-        // abi.encodePacked(startBlock, endBlock) of header range commitment on vectorx
-        bytes32 rangeHash;
-        // index of the data root in the commitment tree
-        uint256 dataRootIndex;
-        // blob root to check proof against, or reconstruct the data root
-        bytes32 blobRoot;
-        // bridge root to check proof against, or reconstruct the data root
-        bytes32 bridgeRoot;
-        // leaf being proven
-        bytes32 leaf;
-        // index of the leaf in the blob/bridge root tree
-        uint256 leafIndex;
-    }
 
     bytes1 private constant MESSAGE_TX_PREFIX = 0x01;
     bytes1 private constant TOKEN_TX_PREFIX = 0x02;
@@ -85,26 +51,6 @@ contract AvailBridge is
     mapping(uint256 => bytes32) public isSent;
     // map Avail asset IDs to an Ethereum address
     mapping(bytes32 => address) public tokens;
-
-    event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
-    event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
-
-    error AlreadyBridged();
-    error ArrayLengthMismatch();
-    error BlobRootEmpty();
-    error BridgeRootEmpty();
-    error DataRootCommitmentEmpty();
-    error ExceedsMaxDataLength();
-    error FeeTooLow();
-    error InvalidAssetId();
-    error InvalidDataRootProof();
-    error InvalidDomain();
-    error InvalidDestinationOrAmount();
-    error InvalidFungibleTokenTransfer();
-    error InvalidLeaf();
-    error InvalidMerkleProof();
-    error InvalidMessage();
-    error UnlockFailed();
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {

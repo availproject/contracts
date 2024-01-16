@@ -1,66 +1,41 @@
-## Foundry
-
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Avail Contracts
+This repository contains all Avail contracts related to the arbitrary message bridge between Avail and Ethereum.
 
 ## Documentation
-
-https://book.getfoundry.sh/
+You can find additional documentation in the form of NatSpec and line-by-line comments.
 
 ## Usage
-
 ### Build
-
-```shell
-$ forge build
+```bash
+forge build
 ```
 
 ### Test
+```bash
+forge test -vvv
+```
+To use the `intense` profile:
+```bash
+FOUNDRY_PROFILE=intense forge test -vvv
+```
 
-```shell
-$ forge test
+### Coverage
+```bash
+forge coverage
 ```
 
 ### Format
-
-```shell
-$ forge fmt
+```bash
+forge fmt
 ```
 
 ### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
+```bash
+forge snapshot
 ```
 
 ### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+Deployments require a proxy admin address and a `Vectorx` deployment on the chain you're deploying.
+```bash
+ADMIN=<admin_address> forge script script/Deploy.s.sol --rpc-url <your_rpc_url> --private-key <your_private_key>
 ```
