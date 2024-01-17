@@ -461,7 +461,9 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.fees(), amount);
     }
 
-    function testRevertWithdrawalFailed_withdrawFees(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount) external {
+    function testRevertWithdrawalFailed_withdrawFees(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount)
+        external
+    {
         vm.prank(owner);
         bridge.updateFeePerByte(feePerByte);
         vm.assume(data.length < 102_400 && amount >= bridge.getFee(data.length));

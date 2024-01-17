@@ -168,7 +168,7 @@ contract AvailBridge is
     function withdrawFees() external {
         uint256 val = fees;
         delete fees;
-        (bool success, ) = feeRecipient.call{value: val}("");
+        (bool success,) = feeRecipient.call{value: val}("");
         if (!success) {
             revert WithdrawFailed();
         }
