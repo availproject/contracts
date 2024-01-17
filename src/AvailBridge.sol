@@ -166,9 +166,9 @@ contract AvailBridge is
      * @dev     Callable by anyone because all fees are always sent to the recipient
      */
     function withdrawFees() external {
-        uint256 val = fees;
+        uint256 fee = fees;
         delete fees;
-        (bool success,) = feeRecipient.call{value: val}("");
+        (bool success,) = feeRecipient.call{value: fee}("");
         if (!success) {
             revert WithdrawFailed();
         }

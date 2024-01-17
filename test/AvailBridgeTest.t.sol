@@ -5,6 +5,7 @@ import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IAvailBridge, AvailBridge} from "src/AvailBridge.sol";
 import {WrappedAvail, IWrappedAvail} from "src/WrappedAvail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
@@ -39,8 +40,16 @@ contract AvailBridgeTest is Test, MurkyBase {
     }
 
     function test_feeRecipient() external {
-        assertNotEq(bridge.owner(), address(0));
-        assertEq(bridge.owner(), owner);
+        assertNotEq(bridge.feeRecipient(), address(0));
+        assertEq(bridge.feeRecipient(), owner);
+    }
+
+    function testRevertUnauthorizedAccount_setFeePerByte(uint256 feePerByte) external {
+        address rand = makeAddr("rand");
+        vm.assume(rand != owner);
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
+        vm.prank(rand);
+        bridge.updateFeePerByte(feePerByte);
     }
 
     function test_setFeePerByte(uint256 feePerByte) external {
@@ -49,10 +58,40 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.feePerByte(), feePerByte);
     }
 
+    function testRevertUnauthorizedAccount_updateVectorx(IVectorx newVectorx) external {
+        address rand = makeAddr("rand");
+        vm.assume(rand != owner);
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
+        vm.prank(rand);
+        bridge.updateVectorx(newVectorx);
+    }
+
     function test_updateVectorx(IVectorx newVectorx) external {
         vm.prank(owner);
         bridge.updateVectorx(newVectorx);
         assertEq(address(bridge.vectorx()), address(newVectorx));
+    }
+
+    function testRevertUnauthorizedAccount_updateFeeRecipient(address newFeeRecipient) external {
+        address rand = makeAddr("rand");
+        vm.assume(rand != owner);
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
+        vm.prank(rand);
+        bridge.updateFeeRecipient(newFeeRecipient);
+    }
+
+    function test_updateFeeRecipient(address newFeeRecipient) external {
+        vm.prank(owner);
+        bridge.updateFeeRecipient(newFeeRecipient);
+        assertEq(bridge.feeRecipient(), newFeeRecipient);
+    }
+
+    function testRevertUnauthorizedAccount_updateTokens() external {
+        address rand = makeAddr("rand");
+        vm.assume(rand != owner);
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
+        vm.prank(rand);
+        bridge.updateTokens(new bytes32[](0), new address[](0));
     }
 
     function testRevertArrayLengthMismatch_updateTokens(uint8 len1, uint8 len2) external {
@@ -65,6 +104,27 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.updateTokens(assetIds, addresses);
     }
 
+    function test_updateTokens(uint256 val1, uint256 val2, uint8 len) external {
+        // we do this to get unique assetIds and addresses
+        bytes32[] memory assetIds = new bytes32[](len);
+        address[] memory addresses = new address[](len);
+        for (uint256 i = 0; i < len;) {
+            assetIds[i] = keccak256(abi.encode(val1, i));
+            addresses[i] = makeAddr(string(abi.encode(val2, i)));
+            unchecked {
+                ++i;
+            }
+        }
+        vm.prank(owner);
+        bridge.updateTokens(assetIds, addresses);
+        for (uint256 i = 0; i < len;) {
+            assertEq(bridge.tokens(assetIds[i]), addresses[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     function testRevertInvalidMessage_receiveMessage(bytes1 prefix) external {
         vm.assume(prefix != 0x01);
         IAvailBridge.Message memory message = IAvailBridge.Message(prefix, bytes32(0), bytes32(0), 1, 2, "", 0);
@@ -73,24 +133,56 @@ contract AvailBridgeTest is Test, MurkyBase {
         );
         vm.expectRevert(IAvailBridge.InvalidMessage.selector);
         bridge.receiveMessage(message, input);
+        assertFalse(bridge.isBridged(keccak256(abi.encode(message))));
     }
 
     function testRevertOnlyPauser_setPaused(bool status) external {
+        address rand = makeAddr("rand");
         vm.expectRevert(
             abi.encodeWithSelector(
-                (IAccessControl.AccessControlUnauthorizedAccount.selector), msg.sender, keccak256("PAUSER_ROLE")
+                (IAccessControl.AccessControlUnauthorizedAccount.selector), rand, keccak256("PAUSER_ROLE")
             )
         );
-        vm.prank(msg.sender);
+        vm.prank(rand);
         bridge.setPaused(status);
     }
 
     function test_setPaused() external {
         vm.startPrank(pauser);
         bridge.setPaused(true);
-        assertEq(bridge.paused(), true);
+        assertTrue(bridge.paused());
         bridge.setPaused(false);
-        assertEq(bridge.paused(), false);
+        assertFalse(bridge.paused());
+    }
+
+    function test_setPausedWithMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId)
+        external
+    {
+        vm.startPrank(pauser);
+        bridge.setPaused(true);
+        assertTrue(bridge.paused());
+        MessageReceiverMock messageReceiver = new MessageReceiverMock();
+        messageReceiver.initialize(address(bridge));
+
+        IAvailBridge.Message memory message =
+            IAvailBridge.Message(0x01, from, bytes32(bytes20(address(messageReceiver))), 1, 2, data, messageId);
+        bytes32 messageHash = keccak256(abi.encode(message));
+        bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
+
+        vectorx.set(rangeHash, dataRoot);
+
+        bytes32[] memory emptyArr;
+        IAvailBridge.MerkleProofInput memory input =
+            IAvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        bridge.receiveMessage(message, input);
+        assertFalse(bridge.isBridged(messageHash));
+        bridge.setPaused(false);
+        assertFalse(bridge.paused());
+        vm.expectCall(address(messageReceiver), abi.encodeCall(messageReceiver.onAvailMessage, (from, data)));
+        bridge.receiveMessage(message, input);
+        assertTrue(bridge.isBridged(messageHash));
     }
 
     function test_receiveMessage(bytes32 rangeHash, bytes calldata data, bytes32 from, uint64 messageId) external {
@@ -110,6 +202,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectCall(address(messageReceiver), abi.encodeCall(messageReceiver.onAvailMessage, (from, data)));
         bridge.receiveMessage(message, input);
+        assertTrue(bridge.isBridged(messageHash));
     }
 
     function testRevertAlreadyBridged_receiveMessage(
@@ -134,8 +227,10 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectCall(address(messageReceiver), abi.encodeCall(messageReceiver.onAvailMessage, (from, data)));
         bridge.receiveMessage(message, input);
+        assertTrue(bridge.isBridged(messageHash));
         vm.expectRevert(IAvailBridge.AlreadyBridged.selector);
         bridge.receiveMessage(message, input);
+        assertTrue(bridge.isBridged(messageHash));
     }
 
     function testRevertInvalidLeaf_receiveMessage(
@@ -162,7 +257,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectRevert(IAvailBridge.InvalidLeaf.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
     }
 
     function testRevertInvalidMerkleProof_receiveMessage(
@@ -192,14 +287,14 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectRevert(IAvailBridge.InvalidMerkleProof.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
         // give a fuzzed wrong proof
         input =
             IAvailBridge.MerkleProofInput(emptyArr, wrongProof, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
 
         vm.expectRevert(IAvailBridge.InvalidMerkleProof.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
 
         // give a fuzzed wrong proof and index
         input = IAvailBridge.MerkleProofInput(
@@ -208,7 +303,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectRevert(IAvailBridge.InvalidMerkleProof.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
     }
 
     function testRevertDataRootCommitmentEmpty_receiveMessage(
@@ -231,7 +326,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         // data root is not set in vectorx!
         vm.expectRevert(IAvailBridge.DataRootCommitmentEmpty.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
     }
 
     function testRevertInvalidDataRootProof_receiveMessage(
@@ -260,7 +355,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectRevert(IAvailBridge.InvalidDataRootProof.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
 
         // give fuzzed wrong index
         input = IAvailBridge.MerkleProofInput(
@@ -269,7 +364,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectRevert(IAvailBridge.InvalidDataRootProof.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
 
         // give fuzzed wrong proof and wrong index
         input = IAvailBridge.MerkleProofInput(
@@ -278,7 +373,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectRevert(IAvailBridge.InvalidDataRootProof.selector);
         bridge.receiveMessage(message, input);
-        assertEq(bridge.isBridged(messageHash), false);
+        assertFalse(bridge.isBridged(messageHash));
     }
 
     function testRevertInvalidAssetId_receiveAvail(bytes32 assetId) external {
@@ -290,6 +385,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         );
         vm.expectRevert(IAvailBridge.InvalidAssetId.selector);
         bridge.receiveAVAIL(message, input);
+        assertFalse(bridge.isBridged(keccak256(abi.encode(message))));
     }
 
     function test_receiveAVAIL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
@@ -308,6 +404,7 @@ contract AvailBridgeTest is Test, MurkyBase {
 
         vm.expectCall(address(avail), abi.encodeCall(avail.mint, (to, amount)));
         bridge.receiveAVAIL(message, input);
+        assertTrue(bridge.isBridged(messageHash));
         assertEq(avail.totalSupply(), amount);
     }
 
@@ -320,6 +417,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         );
         vm.expectRevert(IAvailBridge.InvalidAssetId.selector);
         bridge.receiveETH(message, input);
+        assertFalse(bridge.isBridged(keccak256(abi.encode(message))));
     }
 
     function testRevertUnlockFailed_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId)
@@ -350,6 +448,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         vm.expectRevert(IAvailBridge.UnlockFailed.selector);
         bridge.receiveETH(message, input);
         assertEq(address(bridge).balance, amount);
+        assertFalse(bridge.isBridged(messageHash));
     }
 
     function test_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
@@ -377,6 +476,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         uint256 balance = to.balance;
         bridge.receiveETH(message, input);
         assertEq(to.balance, balance + amount);
+        assertTrue(bridge.isBridged(messageHash));
     }
 
     function testRevertInvalidAssetId_receiveERC20(bytes32 assetId) external {
@@ -387,6 +487,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         );
         vm.expectRevert(IAvailBridge.InvalidAssetId.selector);
         bridge.receiveERC20(message, input);
+        assertFalse(bridge.isBridged(keccak256(abi.encode(message))));
     }
 
     function test_receiveERC20(bytes32 rangeHash, bytes32 assetId, bytes32 from, uint256 amount, uint64 messageId)
@@ -417,6 +518,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.receiveERC20(message, input);
         uint256 newBalance = token.balanceOf(to);
         assertEq(newBalance, balance + amount);
+        assertTrue(bridge.isBridged(messageHash));
     }
 
     function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes32[3200] calldata c_data, uint256 amount)
@@ -496,7 +598,6 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.fees(), amount);
 
         uint256 balance = bridge.feeRecipient().balance;
-        console.log(balance);
         bridge.withdrawFees();
         assertEq(bridge.feeRecipient().balance, balance + amount);
         assertEq(bridge.fees(), 0);
