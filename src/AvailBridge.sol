@@ -390,7 +390,7 @@ contract AvailBridge is
         _checkDataRoot(input);
         // leaf must be keccak(blob)
         // we don't need to check that the leaf is non-zero because we hash the pre-image here
-        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encodePacked(input.leaf)));
+        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encode(input.leaf)));
     }
 
     /**
