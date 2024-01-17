@@ -93,6 +93,7 @@ contract AvailBridge is
         IVectorx newVectorx
     ) external initializer {
         feePerByte = newFeePerByte;
+        // slither-disable-next-line missing-zero-check
         feeRecipient = newFeeRecipient;
         vectorx = newVectorx;
         avail = newAvail;
@@ -132,10 +133,11 @@ contract AvailBridge is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (assetIds.length != tokenAddresses.length) {
+        uint256 length = assetIds.length;
+        if (length != tokenAddresses.length) {
             revert ArrayLengthMismatch();
         }
-        for (uint256 i = 0; i < assetIds.length;) {
+        for (uint256 i = 0; i < length;) {
             tokens[assetIds[i]] = tokenAddresses[i];
             unchecked {
                 ++i;
@@ -158,6 +160,7 @@ contract AvailBridge is
      * @param   newFeeRecipient  New fee recipient address
      */
     function updateFeeRecipient(address newFeeRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // slither-disable-next-line missing-zero-check
         feeRecipient = newFeeRecipient;
     }
 
@@ -168,6 +171,7 @@ contract AvailBridge is
     function withdrawFees() external {
         uint256 fee = fees;
         delete fees;
+        // slither-disable-next-line low-level-calls
         (bool success,) = feeRecipient.call{value: fee}("");
         if (!success) {
             revert WithdrawFailed();
