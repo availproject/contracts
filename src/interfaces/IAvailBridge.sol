@@ -57,4 +57,5 @@ interface IAvailBridge {
     error InvalidMerkleProof();
     error InvalidMessage();
     error UnlockFailed();
+    error WithdrawFailed();
 }

@@ -35,22 +35,24 @@ contract AvailBridge is
     bytes1 private constant TOKEN_TX_PREFIX = 0x02;
     uint32 private constant AVAIL_DOMAIN = 1;
     uint32 private constant ETH_DOMAIN = 2;
-    uint32 private constant MAX_DATA_LENGTH = 102_400;
+    uint256 private constant MAX_DATA_LENGTH = 102_400;
     // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    IVectorx public vectorx;
-    IWrappedAvail public avail;
-    uint256 public messageId;
-    uint256 public feePerByte;
-
     // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;
     // map message hashes to their message ID, used for Ethereum -> Avail messages
     mapping(uint256 => bytes32) public isSent;
     // map Avail asset IDs to an Ethereum address
     mapping(bytes32 => address) public tokens;
+
+    IVectorx public vectorx;
+    IWrappedAvail public avail;
+    address public feeRecipient;
+    uint256 public fees; // total fees accumulated by bridge
+    uint256 public feePerByte; // in wei
+    uint256 public messageId; // next nonce
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
@@ -75,6 +77,8 @@ contract AvailBridge is
 
     /**
      * @notice  Initializes the AvailBridge contract
+     * @param   newFeePerByte  New fee per byte value
+     * @param   newFeeRecipient  New fee recipient address
      * @param   newAvail  Address of the WAVAIL token contract
      * @param   governance  Address of the governance multisig
      * @param   pauser  Address of the pauser multisig
@@ -82,12 +86,14 @@ contract AvailBridge is
      */
     function initialize(
         uint256 newFeePerByte,
+        address newFeeRecipient,
         IWrappedAvail newAvail,
         address governance,
         address pauser,
         IVectorx newVectorx
     ) external initializer {
         feePerByte = newFeePerByte;
+        feeRecipient = newFeeRecipient;
         vectorx = newVectorx;
         avail = newAvail;
         __AccessControlDefaultAdminRules_init(0, governance);
@@ -144,6 +150,28 @@ contract AvailBridge is
      */
     function updateFeePerByte(uint256 newFeePerByte) external onlyRole(DEFAULT_ADMIN_ROLE) {
         feePerByte = newFeePerByte;
+    }
+
+    /**
+     * @notice  Function to update the fee recipient
+     * @dev     Only callable by governance
+     * @param   newFeeRecipient  New fee recipient address
+     */
+    function updateFeeRecipient(address newFeeRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeRecipient = newFeeRecipient;
+    }
+
+    /**
+     * @notice  Function to withdraw fees to the fee recipient
+     * @dev     Callable by anyone because all fees are always sent to the recipient
+     */
+    function withdrawFees() external {
+        uint256 val = fees;
+        delete fees;
+        (bool success, ) = feeRecipient.call{value: val}("");
+        if (!success) {
+            revert WithdrawFailed();
+        }
     }
 
     /**
@@ -278,6 +306,7 @@ contract AvailBridge is
         unchecked {
             id = messageId++;
         }
+        fees += msg.value;
         Message memory message = Message(
             MESSAGE_TX_PREFIX, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, data, uint64(id)
         );

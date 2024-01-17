@@ -29,11 +29,16 @@ contract AvailBridgeTest is Test, MurkyBase {
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         avail = new WrappedAvail(address(bridge));
-        bridge.initialize(0, IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        bridge.initialize(0, msg.sender, IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
     }
 
     function test_owner() external {
+        assertNotEq(bridge.owner(), address(0));
+        assertEq(bridge.owner(), owner);
+    }
+
+    function test_feeRecipient() external {
         assertNotEq(bridge.owner(), address(0));
         assertEq(bridge.owner(), owner);
     }
@@ -424,6 +429,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         vm.expectRevert(IAvailBridge.ExceedsMaxDataLength.selector);
         bridge.sendMessage{value: amount}(to, data);
         assertEq(bridge.isSent(0), 0x0);
+        assertEq(bridge.fees(), 0);
     }
 
     function testRevertFeeTooLow_sendMessage(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount)
@@ -439,6 +445,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         vm.expectRevert(IAvailBridge.FeeTooLow.selector);
         bridge.sendMessage{value: amount}(to, data);
         assertEq(bridge.isSent(0), 0x0);
+        assertEq(bridge.fees(), 0);
     }
 
     function test_sendMessage(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount) external {
@@ -451,6 +458,46 @@ contract AvailBridgeTest is Test, MurkyBase {
         vm.deal(from, amount);
         bridge.sendMessage{value: amount}(to, data);
         assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
+        assertEq(bridge.fees(), amount);
+    }
+
+    function testRevertWithdrawalFailed_withdrawFees(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount) external {
+        vm.prank(owner);
+        bridge.updateFeePerByte(feePerByte);
+        vm.assume(data.length < 102_400 && amount >= bridge.getFee(data.length));
+        address from = makeAddr("from");
+        IAvailBridge.Message memory message = IAvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
+        vm.prank(from);
+        vm.deal(from, amount);
+        bridge.sendMessage{value: amount}(to, data);
+        assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
+        assertEq(bridge.fees(), amount);
+
+        uint256 balance = bridge.feeRecipient().balance;
+        vm.etch(bridge.feeRecipient(), revertCode);
+        vm.expectRevert(IAvailBridge.WithdrawFailed.selector);
+        bridge.withdrawFees();
+        assertEq(bridge.feeRecipient().balance, balance);
+        assertEq(bridge.fees(), amount);
+    }
+
+    function test_withdrawFees(bytes32 to, bytes calldata data, uint32 feePerByte, uint248 amount) external {
+        vm.prank(owner);
+        bridge.updateFeePerByte(feePerByte);
+        vm.assume(data.length < 102_400 && amount >= bridge.getFee(data.length));
+        address from = makeAddr("from");
+        IAvailBridge.Message memory message = IAvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
+        vm.prank(from);
+        vm.deal(from, amount);
+        bridge.sendMessage{value: amount}(to, data);
+        assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
+        assertEq(bridge.fees(), amount);
+
+        uint256 balance = bridge.feeRecipient().balance;
+        console.log(balance);
+        bridge.withdrawFees();
+        assertEq(bridge.feeRecipient().balance, balance + amount);
+        assertEq(bridge.fees(), 0);
     }
 
     function test_sendAVAIL(bytes32 to, uint256 amount) external {
