@@ -410,7 +410,14 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(avail.totalSupply(), amount);
     }
 
-    function test_receiveAVAIL_2(bytes32 rangeHash, uint64 messageId, bytes32[16] calldata c_leaves, bytes32[16] calldata c_dataRoots, uint256 rand, bytes32 blobRoot) external {
+    function test_receiveAVAIL_2(
+        bytes32 rangeHash,
+        uint64 messageId,
+        bytes32[16] calldata c_leaves,
+        bytes32[16] calldata c_dataRoots,
+        uint256 rand,
+        bytes32 blobRoot
+    ) external {
         // this function is a bit unreadable because forge coverage does not support IR compilation which results
         // in stack too deep errors
         bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
@@ -423,17 +430,53 @@ contract AvailBridgeTest is Test, MurkyBase {
             }
         }
         address to = makeAddr("to");
-        leaves[rand % leaves.length] = keccak256(abi.encode(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId)));
+        leaves[rand % leaves.length] = keccak256(
+            abi.encode(
+                IAvailBridge.Message(
+                    0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId
+                )
+            )
+        );
         // set dataRoot at this point in the array
         dataRoots[rand % dataRoots.length] = hashLeafPairs(blobRoot, getRoot(leaves));
         vectorx.set(rangeHash, sha2merkle.getRoot(dataRoots));
-        
+
         vm.expectCall(address(avail), abi.encodeCall(avail.mint, (to, 1)));
         {
-            bridge.receiveAVAIL(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId), IAvailBridge.MerkleProofInput(sha2merkle.getProof(dataRoots, rand % dataRoots.length), getProof(leaves, rand % leaves.length), rangeHash, rand % dataRoots.length, blobRoot, getRoot(leaves), keccak256(abi.encode(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId))), rand % leaves.length));
+            bridge.receiveAVAIL(
+                IAvailBridge.Message(
+                    0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId
+                ),
+                IAvailBridge.MerkleProofInput(
+                    sha2merkle.getProof(dataRoots, rand % dataRoots.length),
+                    getProof(leaves, rand % leaves.length),
+                    rangeHash,
+                    rand % dataRoots.length,
+                    blobRoot,
+                    getRoot(leaves),
+                    keccak256(
+                        abi.encode(
+                            IAvailBridge.Message(
+                                0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId
+                            )
+                        )
+                    ),
+                    rand % leaves.length
+                )
+            );
         }
-        {   
-            assertTrue(bridge.isBridged(keccak256(abi.encode(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId)))));
+        {
+            assertTrue(
+                bridge.isBridged(
+                    keccak256(
+                        abi.encode(
+                            IAvailBridge.Message(
+                                0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId
+                            )
+                        )
+                    )
+                )
+            );
         }
         {
             assertEq(avail.totalSupply(), 1);

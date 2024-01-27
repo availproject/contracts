@@ -13,5 +13,6 @@ runs = 10000
 
 [rpc_endpoints]
 sepolia = "https://ethereum-sepolia.publicnode.com"
+goerli = "https://ethereum-goerli.publicnode.com"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

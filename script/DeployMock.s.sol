@@ -17,11 +17,10 @@ contract GetProofMockScript is Script {
         address vectorx = vm.envAddress("VECTORX");
         ProxyAdmin proxyAdmin = new ProxyAdmin(admin);
         address impl = address(new DummyAvailBridge());
-        DummyAvailBridge bridge = DummyAvailBridge(address(new TransparentUpgradeableProxy(impl, address(proxyAdmin), "")));
+        DummyAvailBridge bridge =
+            DummyAvailBridge(address(new TransparentUpgradeableProxy(impl, address(proxyAdmin), "")));
         WrappedAvail avail = new WrappedAvail(address(bridge));
-        bridge.initialize(
-            0, admin, IWrappedAvail(address(avail)), admin, admin, IDummyVectorx(vectorx)
-        );
+        bridge.initialize(0, admin, IWrappedAvail(address(avail)), admin, admin, IDummyVectorx(vectorx));
         vm.stopBroadcast();
     }
 }

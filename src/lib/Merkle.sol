@@ -44,7 +44,11 @@ library Merkle {
         }
     }
 
-    function verifySha2(bytes32[] calldata proof, bytes32 root, uint256 index, bytes32 leaf) internal view returns (bool isValid) {
+    function verifySha2(bytes32[] calldata proof, bytes32 root, uint256 index, bytes32 leaf)
+        internal
+        view
+        returns (bool isValid)
+    {
         assembly ("memory-safe") {
             if proof.length {
                 // set end to be the end of the proof array, shl(5, proof.length) is equivalent to proof.length * 32
