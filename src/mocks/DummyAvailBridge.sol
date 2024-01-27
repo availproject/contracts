@@ -98,6 +98,7 @@ contract DummyAvailBridge is
         feeRecipient = newFeeRecipient;
         vectorx = newVectorx;
         avail = newAvail;
+        resetCounter = 1;
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
         __Pausable_init();
