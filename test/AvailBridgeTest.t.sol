@@ -19,6 +19,7 @@ contract AvailBridgeTest is Test, MurkyBase {
     WrappedAvail public avail;
     VectorxMock public vectorx;
     ProxyAdmin public admin;
+    Sha2Merkle public sha2merkle;
     address public owner;
     address public pauser;
     bytes public constant revertCode = "5F5FFD";
@@ -27,6 +28,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         vectorx = new VectorxMock();
         admin = new ProxyAdmin(msg.sender);
         pauser = makeAddr("pauser");
+        sha2merkle = new Sha2Merkle();
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         avail = new WrappedAvail(address(bridge));
@@ -408,6 +410,36 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(avail.totalSupply(), amount);
     }
 
+    function test_receiveAVAIL_2(bytes32 rangeHash, uint64 messageId, bytes32[16] calldata c_leaves, bytes32[16] calldata c_dataRoots, uint256 rand, bytes32 blobRoot) external {
+        // this function is a bit unreadable because forge coverage does not support IR compilation which results
+        // in stack too deep errors
+        bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
+        bytes32[] memory leaves = new bytes32[](c_leaves.length);
+        for (uint256 i = 0; i < c_leaves.length;) {
+            dataRoots[i] = c_dataRoots[i];
+            leaves[i] = c_leaves[i];
+            unchecked {
+                ++i;
+            }
+        }
+        address to = makeAddr("to");
+        leaves[rand % leaves.length] = keccak256(abi.encode(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId)));
+        // set dataRoot at this point in the array
+        dataRoots[rand % dataRoots.length] = hashLeafPairs(blobRoot, getRoot(leaves));
+        vectorx.set(rangeHash, sha2merkle.getRoot(dataRoots));
+        
+        vm.expectCall(address(avail), abi.encodeCall(avail.mint, (to, 1)));
+        {
+            bridge.receiveAVAIL(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId), IAvailBridge.MerkleProofInput(sha2merkle.getProof(dataRoots, rand % dataRoots.length), getProof(leaves, rand % leaves.length), rangeHash, rand % dataRoots.length, blobRoot, getRoot(leaves), keccak256(abi.encode(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId))), rand % leaves.length));
+        }
+        {   
+            assertTrue(bridge.isBridged(keccak256(abi.encode(IAvailBridge.Message(0x02, bytes32("1"), bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), 1), messageId)))));
+        }
+        {
+            assertEq(avail.totalSupply(), 1);
+        }
+    }
+
     function testRevertInvalidAssetId_receiveETH(bytes32 assetId) external {
         vm.assume(assetId != 0x4554480000000000000000000000000000000000000000000000000000000000);
         IAvailBridge.Message memory message =
@@ -637,6 +669,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(address(bridge).balance, amount);
         assertEq(bridge.isSent(0), keccak256(abi.encode(message)));
         assertEq(from.balance, balance - amount);
+        assertEq(bridge.messageId(), 1);
     }
 
     function testRevertInvalidAssetId_sendERC20(bytes32 assetId, bytes32 dest, uint256 amount) external {
@@ -694,8 +727,8 @@ contract AvailBridgeTest is Test, MurkyBase {
         bytes32 dataRoot = hashLeafPairs(blobRoot, bridgeRoot);
         // set dataRoot at this point in the array
         dataRoots[rand % dataRoots.length] = dataRoot;
-        bytes32 dataRootCommitment = getRoot(dataRoots);
-        bytes32[] memory dataRootProof = getProof(dataRoots, rand % dataRoots.length);
+        bytes32 dataRootCommitment = sha2merkle.getRoot(dataRoots);
+        bytes32[] memory dataRootProof = sha2merkle.getProof(dataRoots, rand % dataRoots.length);
         vectorx.set(rangeHash, dataRootCommitment);
         for (uint256 i = 0; i < leaves.length;) {
             bytes32[] memory leafProof = getProof(leaves, i);
@@ -736,8 +769,8 @@ contract AvailBridgeTest is Test, MurkyBase {
         bytes32 dataRoot = hashLeafPairs(blobRoot, bridgeRoot);
         // set dataRoot at this point in the array
         dataRoots[rand % dataRoots.length] = dataRoot;
-        bytes32 dataRootCommitment = getRoot(dataRoots);
-        bytes32[] memory dataRootProof = getProof(dataRoots, rand % dataRoots.length);
+        bytes32 dataRootCommitment = sha2merkle.getRoot(dataRoots);
+        bytes32[] memory dataRootProof = sha2merkle.getProof(dataRoots, rand % dataRoots.length);
         vectorx.set(rangeHash, dataRootCommitment);
         for (uint256 i = 0; i < leaves.length;) {
             bytes32[] memory leafProof = getProof(leaves, i);
@@ -753,5 +786,11 @@ contract AvailBridgeTest is Test, MurkyBase {
 
     function hashLeafPairs(bytes32 left, bytes32 right) public pure override returns (bytes32) {
         return keccak256(abi.encode(left, right));
+    }
+}
+
+contract Sha2Merkle is MurkyBase {
+    function hashLeafPairs(bytes32 left, bytes32 right) public pure override returns (bytes32) {
+        return sha256(abi.encode(left, right));
     }
 }
