@@ -46,9 +46,9 @@ interface IAvailBridge {
     error BlobRootEmpty();
     error BridgeRootEmpty();
     error DataRootCommitmentEmpty();
-    error ExceedsMaxDataLength();
     error FeeTooLow();
     error InvalidAssetId();
+    error InvalidDataLength();
     error InvalidDataRootProof();
     error InvalidDomain();
     error InvalidDestinationOrAmount();

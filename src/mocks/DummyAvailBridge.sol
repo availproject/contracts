@@ -309,8 +309,8 @@ contract DummyAvailBridge is
      */
     function sendMessage(bytes32 recipient, bytes calldata data) external payable whenNotPaused {
         uint256 length = data.length;
-        if (length > MAX_DATA_LENGTH) {
-            revert ExceedsMaxDataLength();
+        if (length == 0 || length > MAX_DATA_LENGTH) {
+            revert InvalidDataLength();
         }
         // ensure that fee is above minimum amount
         if (msg.value < getFee(length)) {

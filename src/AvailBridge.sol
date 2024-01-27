@@ -299,8 +299,8 @@ contract AvailBridge is
      */
     function sendMessage(bytes32 recipient, bytes calldata data) external payable whenNotPaused {
         uint256 length = data.length;
-        if (length >= MAX_DATA_LENGTH) {
-            revert ExceedsMaxDataLength();
+        if (length == 0 || length > MAX_DATA_LENGTH) {
+            revert InvalidDataLength();
         }
         // ensure that fee is above minimum amount
         if (msg.value < getFee(length)) {
@@ -448,7 +448,7 @@ contract AvailBridge is
      * @return  uint256  The minimum fee
      */
     function getFee(uint256 length) public view returns (uint256) {
-        return length * feePerByte;
+        return length * feePerByte + 1;
     }
 
     /**
