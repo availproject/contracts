@@ -487,7 +487,7 @@ contract AvailBridge is
         // we construct the data root here internally, it is not possible to create an invalid data root that is
         // also part of the commitment tree
         if (
-            !input.dataRootProof.verify(
+            !input.dataRootProof.verifySha2(
                 dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
             )
         ) {
