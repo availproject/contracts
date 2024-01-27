@@ -596,14 +596,14 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertTrue(bridge.isBridged(messageHash));
     }
 
-    function testRevertExceedsMaxDataLength_sendMessage(bytes32 to, bytes32[3200] calldata c_data, uint256 amount)
+    function testRevertInvalidDataLength_sendMessage(bytes32 to, bytes32[3200] calldata c_data, uint256 amount)
         external
     {
         bytes memory data = abi.encode(c_data);
         address from = makeAddr("from");
         vm.prank(from);
         vm.deal(from, amount);
-        vm.expectRevert(IAvailBridge.ExceedsMaxDataLength.selector);
+        vm.expectRevert(IAvailBridge.InvalidDataLength.selector);
         bridge.sendMessage{value: amount}(to, data);
         assertEq(bridge.isSent(0), 0x0);
         assertEq(bridge.fees(), 0);
