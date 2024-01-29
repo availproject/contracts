@@ -7,7 +7,7 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IAvailBridge, AvailBridge} from "src/AvailBridge.sol";
-import {WrappedAvail, IWrappedAvail} from "src/WrappedAvail.sol";
+import {Avail, IAvail} from "src/Avail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
@@ -16,7 +16,7 @@ import {Vm, Test, console} from "forge-std/Test.sol";
 
 contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
-    WrappedAvail public avail;
+    Avail public avail;
     VectorxMock public vectorx;
     ProxyAdmin public admin;
     Sha2Merkle public sha2merkle;
@@ -31,8 +31,8 @@ contract AvailBridgeTest is Test, MurkyBase {
         sha2merkle = new Sha2Merkle();
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
-        avail = new WrappedAvail(address(bridge));
-        bridge.initialize(0, msg.sender, IWrappedAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        avail = new Avail(address(bridge));
+        bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
     }
 

@@ -1,22 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.23;
 
-import {WrappedAvail} from "src/WrappedAvail.sol";
+import {Avail} from "src/Avail.sol";
 import {Vm, Test} from "forge-std/Test.sol";
 
-contract WrappedAvailTest is Test {
-    WrappedAvail public avail;
+contract AvailTest is Test {
+    Avail public avail;
     address public bridge;
 
     function setUp() external {
         bridge = makeAddr("bridge");
-        avail = new WrappedAvail(bridge);
+        avail = new Avail(bridge);
+    }
+
+    function test_nameSymbol() external {
+        assertEq(avail.name(), "Avail");
+        assertEq(avail.symbol(), "AVAIL");
     }
 
     function testRevertOnlyAvailBridge_mint(address sender, address dest, uint256 amount) external {
         vm.assume(dest != address(0) && sender != bridge);
         vm.prank(sender);
-        vm.expectRevert(WrappedAvail.OnlyAvailBridge.selector);
+        vm.expectRevert(Avail.OnlyAvailBridge.selector);
         avail.mint(dest, amount);
         assertEq(avail.balanceOf(dest), 0);
     }
@@ -31,7 +36,7 @@ contract WrappedAvailTest is Test {
     function testRevertOnlyAvailBridge_burn(address sender, address dest, uint256 amount) external {
         vm.assume(dest != address(0) && sender != bridge);
         vm.prank(sender);
-        vm.expectRevert(WrappedAvail.OnlyAvailBridge.selector);
+        vm.expectRevert(Avail.OnlyAvailBridge.selector);
         avail.burn(dest, amount);
         assertEq(avail.balanceOf(dest), 0);
     }

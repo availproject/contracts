@@ -2,20 +2,20 @@
 pragma solidity ^0.8.23;
 
 import {ERC20, ERC20Permit} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {IAvail} from "src/interfaces/IAvail.sol";
 
 /**
  * @author  @QEDK (Avail)
- * @title   WrappedAvail
+ * @title   Avail ERC20 token
  * @notice  An Avail token implementation for Ethereum
  * @custom:security security@availproject.org
  */
-contract WrappedAvail is ERC20Permit, IWrappedAvail {
+contract Avail is ERC20Permit, IAvail {
     address public immutable bridge;
 
     error OnlyAvailBridge();
 
-    constructor(address _bridge) ERC20Permit("Wrapped Avail") ERC20("WAVAIL", "Wrapped Avail") {
+    constructor(address _bridge) ERC20Permit("Avail") ERC20("Avail", "AVAIL") {
         // slither-disable-next-line missing-zero-check
         bridge = _bridge;
     }

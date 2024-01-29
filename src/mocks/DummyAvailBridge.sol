@@ -11,7 +11,7 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Merkle} from "src/lib/Merkle.sol";
 import {IDummyVectorx} from "src/mocks/interfaces/IDummyVectorx.sol";
-import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {IAvail} from "src/interfaces/IAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 
@@ -48,7 +48,7 @@ contract DummyAvailBridge is
     mapping(bytes32 => address) public tokens;
 
     IDummyVectorx public vectorx;
-    IWrappedAvail public avail;
+    IAvail public avail;
     address public feeRecipient;
     uint256 public fees; // total fees accumulated by bridge
     uint256 public feePerByte; // in wei
@@ -88,7 +88,7 @@ contract DummyAvailBridge is
     function initialize(
         uint256 newFeePerByte,
         address newFeeRecipient,
-        IWrappedAvail newAvail,
+        IAvail newAvail,
         address governance,
         address pauser,
         IDummyVectorx newVectorx
