@@ -6,8 +6,8 @@ import {TransparentUpgradeableProxy} from
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {AvailBridge} from "src/AvailBridge.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
-import {WrappedAvail} from "src/WrappedAvail.sol";
-import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {Avail} from "src/Avail.sol";
+import {IAvail} from "src/interfaces/IAvail.sol";
 import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
