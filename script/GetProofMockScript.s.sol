@@ -7,7 +7,7 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {AvailBridge} from "src/AvailBridge.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
-import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {IAvail} from "src/interfaces/IAvail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -20,7 +20,7 @@ contract GetProofMockScript is Script {
         address impl = address(new AvailBridge());
         AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         ERC20Mock avail = new ERC20Mock();
-        bridge.initialize(0, msg.sender, IWrappedAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
+        bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
         avail.mint(msg.sender, 1 ether);
         bridge.sendAVAIL(bytes32(uint256(1)), 1 ether);
         console.logBytes32(bridge.isSent(0));

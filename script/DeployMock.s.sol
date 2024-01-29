@@ -5,8 +5,8 @@ import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {DummyAvailBridge} from "src/mocks/DummyAvailBridge.sol";
-import {WrappedAvail} from "src/WrappedAvail.sol";
-import {IWrappedAvail} from "src/interfaces/IWrappedAvail.sol";
+import {Avail} from "src/Avail.sol";
+import {IAvail} from "src/interfaces/IAvail.sol";
 import {IDummyVectorx} from "src/mocks/interfaces/IDummyVectorx.sol";
 import {Script} from "forge-std/Script.sol";
 
@@ -19,8 +19,8 @@ contract GetProofMockScript is Script {
         address impl = address(new DummyAvailBridge());
         DummyAvailBridge bridge =
             DummyAvailBridge(address(new TransparentUpgradeableProxy(impl, address(proxyAdmin), "")));
-        WrappedAvail avail = new WrappedAvail(address(bridge));
-        bridge.initialize(0, admin, IWrappedAvail(address(avail)), admin, admin, IDummyVectorx(vectorx));
+        Avail avail = new Avail(address(bridge));
+        bridge.initialize(0, admin, IAvail(address(avail)), admin, admin, IDummyVectorx(vectorx));
         vm.stopBroadcast();
     }
 }
