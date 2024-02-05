@@ -448,7 +448,7 @@ contract AvailBridge is
      * @return  uint256  The minimum fee
      */
     function getFee(uint256 length) public view returns (uint256) {
-        return length * feePerByte + 1;
+        return length * feePerByte;
     }
 
     /**
