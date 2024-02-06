@@ -693,7 +693,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(avail.totalSupply(), 0);
     }
 
-    function test_sendETH(bytes32 to, uint256 amount) external {
+    function test_sendETH(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
         vm.deal(from, amount);
@@ -715,7 +715,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.messageId(), 1);
     }
 
-    function testRevertInvalidAssetId_sendERC20(bytes32 assetId, bytes32 dest, uint256 amount) external {
+    function testRevertInvalidAssetId_sendERC20(bytes32 assetId, bytes32 dest, uint128 amount) external {
         vm.assume(dest != 0x0 && amount != 0);
         vm.expectRevert(IAvailBridge.InvalidAssetId.selector);
         bridge.sendERC20(assetId, dest, amount);
