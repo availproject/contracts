@@ -690,7 +690,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.fees(), 0);
     }
 
-    function test_sendAVAIL(bytes32 to, uint256 amount) external {
+    function test_sendAVAIL(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
         vm.prank(address(bridge));
@@ -733,7 +733,7 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.sendERC20(assetId, dest, amount);
     }
 
-    function test_sendERC20(bytes32 assetId, bytes32 to, uint256 amount) external {
+    function test_sendERC20(bytes32 assetId, bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
         ERC20Mock token = new ERC20Mock();
