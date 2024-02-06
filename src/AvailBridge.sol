@@ -69,7 +69,7 @@ contract AvailBridge is
     }
 
     modifier checkDestAmt(bytes32 dest, uint256 amount) {
-        if (dest == 0x0 || amount == 0) {
+        if (dest == 0x0 || amount == 0 || amount > type(uint128).max) {
             revert InvalidDestinationOrAmount();
         }
         _;
