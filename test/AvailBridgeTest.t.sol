@@ -721,6 +721,28 @@ contract AvailBridgeTest is Test, MurkyBase {
         bridge.sendERC20(assetId, dest, amount);
     }
 
+    function testRevertInvalidDestinationOrAmount_sendERC20(bytes32 assetId, bytes32 to, uint256 amount) external {
+        vm.assume(to != bytes32(0) && amount > type(uint128).max);
+        address from = makeAddr("from");
+        ERC20Mock token = new ERC20Mock();
+        token.mint(from, amount);
+        bytes32[] memory assetIdArr = new bytes32[](1);
+        assetIdArr[0] = assetId;
+        address[] memory tokenArr = new address[](1);
+        tokenArr[0] = address(token);
+        vm.prank(owner);
+        bridge.updateTokens(assetIdArr, tokenArr);
+        vm.startPrank(from);
+        vm.expectRevert(IAvailBridge.InvalidDestinationOrAmount.selector);
+        bridge.sendERC20(assetId, 0x0, uint128(amount));
+        vm.expectRevert(IAvailBridge.InvalidDestinationOrAmount.selector);
+        bridge.sendERC20(assetId, to, amount);
+        vm.expectRevert(IAvailBridge.InvalidDestinationOrAmount.selector);
+        bridge.sendERC20(assetId, 0x0, amount);
+        assertEq(bridge.isSent(0), 0x0);
+        assertEq(token.balanceOf(address(bridge)), 0);
+    }
+
     function test_sendERC20(bytes32 assetId, bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
