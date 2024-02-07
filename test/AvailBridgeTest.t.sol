@@ -609,6 +609,18 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertEq(bridge.fees(), 0);
     }
 
+    function testRevertInvalidDataLength_sendMessage(bytes32 to, uint256 amount)
+        external
+    {
+        address from = makeAddr("from");
+        vm.prank(from);
+        vm.deal(from, amount);
+        vm.expectRevert(IAvailBridge.InvalidDataLength.selector);
+        bridge.sendMessage{value: amount}(to, "");
+        assertEq(bridge.isSent(0), 0x0);
+        assertEq(bridge.fees(), 0);
+    }
+
     function testRevertFeeTooLow_sendMessage(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount)
         external
     {
