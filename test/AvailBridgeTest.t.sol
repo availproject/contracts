@@ -596,10 +596,10 @@ contract AvailBridgeTest is Test, MurkyBase {
         assertTrue(bridge.isBridged(messageHash));
     }
 
-    function testRevertInvalidDataLength_sendMessage(bytes32 to, bytes32[3200] calldata c_data, uint256 amount)
+    function testRevertInvalidDataLength_sendMessage(bytes32 to, bytes32[3201] calldata c_data, uint256 amount)
         external
     {
-        bytes memory data = abi.encode(c_data);
+        bytes memory data = abi.encodePacked(c_data);
         address from = makeAddr("from");
         vm.prank(from);
         vm.deal(from, amount);
@@ -628,7 +628,7 @@ contract AvailBridgeTest is Test, MurkyBase {
     function test_sendMessage(bytes32 to, bytes calldata data, uint32 feePerByte, uint256 amount) external {
         vm.prank(owner);
         bridge.updateFeePerByte(feePerByte);
-        vm.assume(data.length < 102_400 && amount >= bridge.getFee(data.length));
+        vm.assume(data.length != 0 && data.length < 102_400 && amount >= bridge.getFee(data.length));
         address from = makeAddr("from");
         IAvailBridge.Message memory message = IAvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
         vm.prank(from);
@@ -643,7 +643,7 @@ contract AvailBridgeTest is Test, MurkyBase {
     {
         vm.prank(owner);
         bridge.updateFeePerByte(feePerByte);
-        vm.assume(data.length < 102_400 && amount >= bridge.getFee(data.length));
+        vm.assume(data.length != 0 && data.length < 102_400 && amount >= bridge.getFee(data.length));
         address from = makeAddr("from");
         IAvailBridge.Message memory message = IAvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
         vm.prank(from);
@@ -663,7 +663,7 @@ contract AvailBridgeTest is Test, MurkyBase {
     function test_withdrawFees(bytes32 to, bytes calldata data, uint32 feePerByte, uint248 amount) external {
         vm.prank(owner);
         bridge.updateFeePerByte(feePerByte);
-        vm.assume(data.length < 102_400 && amount >= bridge.getFee(data.length));
+        vm.assume(data.length != 0 && data.length < 102_400 && amount >= bridge.getFee(data.length));
         address from = makeAddr("from");
         IAvailBridge.Message memory message = IAvailBridge.Message(0x01, bytes32(bytes20(from)), to, 2, 1, data, 0);
         vm.prank(from);
