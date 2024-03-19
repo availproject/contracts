@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.25;
 
 import {MurkyBase} from "lib/murky/src/common/MurkyBase.sol";
 import {Merkle} from "src/lib/Merkle.sol";

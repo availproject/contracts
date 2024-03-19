@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.25;
 
 import {MessageReceiver, MessageReceiverMock} from "src/mocks/MessageReceiverMock.sol";
 import {Vm, Test} from "forge-std/Test.sol";
