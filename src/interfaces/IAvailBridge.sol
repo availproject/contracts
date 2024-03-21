@@ -58,4 +58,20 @@ interface IAvailBridge {
     error InvalidMessage();
     error UnlockFailed();
     error WithdrawFailed();
+
+    function setPaused(bool status) external;
+    // no good way to have this function be in the import, so it's commented out
+    // function updateVectorx(address newVectorx) external;
+    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external;
+    function updateFeePerByte(uint256 newFeePerByte) external;
+    function updateFeeRecipient(address newFeeRecipient) external;
+    function withdrawFees() external;
+    function receiveMessage(Message calldata message, MerkleProofInput calldata input) external;
+    function receiveAVAIL(Message calldata message, MerkleProofInput calldata input) external;
+    function receiveETH(Message calldata message, MerkleProofInput calldata input) external;
+    function receiveERC20(Message calldata message, MerkleProofInput calldata input) external;
+    function sendMessage(bytes32 recipient, bytes calldata data) external payable;
+    function sendAVAIL(bytes32 recipient, uint256 amount) external;
+    function sendETH(bytes32 recipient) external payable;
+    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external;
 }

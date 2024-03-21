@@ -3,7 +3,6 @@ pragma solidity ^0.8.25;
 
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IAvailBridge, AvailBridge} from "src/AvailBridge.sol";
@@ -18,7 +17,6 @@ contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
     Avail public avail;
     VectorxMock public vectorx;
-    ProxyAdmin public admin;
     Sha2Merkle public sha2merkle;
     address public owner;
     address public pauser;
@@ -26,11 +24,10 @@ contract AvailBridgeTest is Test, MurkyBase {
 
     function setUp() external {
         vectorx = new VectorxMock();
-        admin = new ProxyAdmin(msg.sender);
         pauser = makeAddr("pauser");
         sha2merkle = new Sha2Merkle();
         address impl = address(new AvailBridge());
-        bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
+        bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
         avail = new Avail(address(bridge));
         bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
