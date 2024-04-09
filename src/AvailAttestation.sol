@@ -24,8 +24,6 @@ abstract contract AvailAttestation is Initializable {
 
     error InvalidAttestationProof();
 
-    event Attested(bytes32 indexed leaf, uint32 indexed blockNumber, uint128 indexed leafIndex);
-
     // slither-disable-next-line naming-convention,dead-code
     function __AvailAttestation_init(IAvailBridge _bridge) internal virtual onlyInitializing {
         bridge = _bridge;
