@@ -25,12 +25,13 @@ abstract contract AvailAttestation is Initializable {
     error InvalidAttestationProof();
     event Attested(bytes32 indexed leaf, uint32 indexed blockNumber, uint128 indexed leafIndex);
 
-    function initialize(IAvailBridge _bridge) external initializer {
+    // slither-disable-next-line naming-convention,dead-code
+    function __AvailAttestation_init(IAvailBridge _bridge) internal virtual onlyInitializing {
         bridge = _bridge;
         vectorx = bridge.vectorx();
     }
 
-    function _attest(IAvailBridge.MerkleProofInput calldata input) external {
+    function _attest(IAvailBridge.MerkleProofInput calldata input) internal virtual {
         if (!bridge.verifyBlobLeaf(input)) revert InvalidAttestationProof();
         attestations[input.leaf] = AttestationData(
             vectorx.rangeStartBlocks(input.rangeHash) + uint32(input.dataRootIndex),
