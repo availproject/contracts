@@ -61,6 +61,7 @@ interface IAvailBridge {
     error UnlockFailed();
     error WithdrawFailed();
 
+    function vectorx() external view returns (IVectorx);
     function setPaused(bool status) external;
     function updateVectorx(IVectorx newVectorx) external;
     function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external;
