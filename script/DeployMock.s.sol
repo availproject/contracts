@@ -7,7 +7,7 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {DummyAvailBridge} from "src/mocks/DummyAvailBridge.sol";
 import {Avail} from "src/Avail.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";
-import {IDummyVectorx} from "src/mocks/interfaces/IDummyVectorx.sol";
+import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {Script} from "forge-std/Script.sol";
 
 contract GetProofMockScript is Script {
@@ -20,7 +20,7 @@ contract GetProofMockScript is Script {
         DummyAvailBridge bridge =
             DummyAvailBridge(address(new TransparentUpgradeableProxy(impl, address(proxyAdmin), "")));
         Avail avail = new Avail(address(bridge));
-        bridge.initialize(0, admin, IAvail(address(avail)), admin, admin, IDummyVectorx(vectorx));
+        bridge.initialize(0, admin, IAvail(address(avail)), admin, admin, IVectorx(vectorx));
         vm.stopBroadcast();
     }
 }

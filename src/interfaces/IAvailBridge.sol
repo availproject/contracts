@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.25;
 
+import {IVectorx} from "src/interfaces/IVectorx.sol";
+
 interface IAvailBridge {
     struct Message {
         // single-byte prefix representing the message type
@@ -60,8 +62,7 @@ interface IAvailBridge {
     error WithdrawFailed();
 
     function setPaused(bool status) external;
-    // no good way to have this function be in the import, so it's commented out
-    // function updateVectorx(address newVectorx) external;
+    function updateVectorx(IVectorx newVectorx) external;
     function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses) external;
     function updateFeePerByte(uint256 newFeePerByte) external;
     function updateFeeRecipient(address newFeeRecipient) external;
@@ -74,4 +75,6 @@ interface IAvailBridge {
     function sendAVAIL(bytes32 recipient, uint256 amount) external;
     function sendETH(bytes32 recipient) external payable;
     function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external;
+    function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool);
+    function verifyBridgeLeaf(MerkleProofInput calldata input) external view returns (bool);
 }

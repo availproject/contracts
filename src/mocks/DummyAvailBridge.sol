@@ -10,7 +10,7 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Merkle} from "src/lib/Merkle.sol";
-import {IDummyVectorx} from "src/mocks/interfaces/IDummyVectorx.sol";
+import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
@@ -47,7 +47,7 @@ contract DummyAvailBridge is
     // map Avail asset IDs to an Ethereum address
     mapping(bytes32 => address) public tokens;
 
-    IDummyVectorx public vectorx;
+    IVectorx public vectorx;
     IAvail public avail;
     address public feeRecipient;
     uint256 public fees; // total fees accumulated by bridge
@@ -91,7 +91,7 @@ contract DummyAvailBridge is
         IAvail newAvail,
         address governance,
         address pauser,
-        IDummyVectorx newVectorx
+        IVectorx newVectorx
     ) external initializer {
         feePerByte = newFeePerByte;
         // slither-disable-next-line missing-zero-check
@@ -121,7 +121,7 @@ contract DummyAvailBridge is
      * @notice  Update the address of the VectorX contract
      * @param   newVectorx  Address of new VectorX contract
      */
-    function updateVectorx(IDummyVectorx newVectorx) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateVectorx(IVectorx newVectorx) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vectorx = newVectorx;
     }
 
@@ -490,7 +490,7 @@ contract DummyAvailBridge is
      * @param   input  Merkle tree proof of inclusion for the data root
      */
     function _checkDataRoot(MerkleProofInput calldata input) private view {
-        bytes32 dataRootCommitment = vectorx.dataRootCommitments(resetCounter, input.rangeHash);
+        bytes32 dataRootCommitment = vectorx.dataRootCommitments(input.rangeHash);
         if (dataRootCommitment == 0x0) {
             revert DataRootCommitmentEmpty();
         }
