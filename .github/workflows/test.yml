@@ -52,7 +52,7 @@ jobs:
         with:
           version: nightly
 
-      - uses: crytic/slither-action@v0.3.0
+      - uses: crytic/slither-action@v0.3.2
 
   coverage:
     strategy:
