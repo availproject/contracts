@@ -79,7 +79,7 @@ contract AvailBridge is
      * @notice  Initializes the AvailBridge contract
      * @param   newFeePerByte  New fee per byte value
      * @param   newFeeRecipient  New fee recipient address
-     * @param   newAvail  Address of the WAVAIL token contract
+     * @param   newAvail  Address of the AVAIL token contract
      * @param   governance  Address of the governance multisig
      * @param   pauser  Address of the pauser multisig
      * @param   newVectorx  Address of the VectorX contract
@@ -321,8 +321,8 @@ contract AvailBridge is
     }
 
     /**
-     * @notice  Burns amount worth of WAVAIL tokens and bridges it to the specified recipient on Avail
-     * @dev     This function is used for WAVAIL transfers from Ethereum to Avail
+     * @notice  Burns amount worth of AVAIL tokens and bridges it to the specified recipient on Avail
+     * @dev     This function is used for AVAIL transfers from Ethereum to Avail
      * @param   recipient  Recipient of the AVAIL tokens on Avail
      * @param   amount  Amount of AVAIL tokens to bridge
      */
