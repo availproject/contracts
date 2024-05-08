@@ -13,6 +13,7 @@ max_test_rejects = 999999
 runs = 10000
 
 [rpc_endpoints]
+mainnet = "https://ethereum-rpc.publicnode.com"
 sepolia = "https://ethereum-sepolia.publicnode.com"
 goerli = "https://ethereum-goerli.publicnode.com"
 
