@@ -2,11 +2,9 @@
 pragma solidity ^0.8.25;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {ReentrancyGuardUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Merkle} from "src/lib/Merkle.sol";
@@ -38,7 +36,8 @@ contract AvailBridge is
     uint256 private constant MAX_DATA_LENGTH = 102_400;
     // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits
-    bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
+    bytes32 private constant ETH_ASSET_ID =
+        0x4554480000000000000000000000000000000000000000000000000000000000;
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;
@@ -54,7 +53,10 @@ contract AvailBridge is
     uint256 public feePerByte; // in wei
     uint256 public messageId; // next nonce
 
-    modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
+    modifier onlySupportedDomain(
+        uint32 originDomain,
+        uint32 destinationDomain
+    ) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
             revert InvalidDomain();
         }
@@ -119,7 +121,9 @@ contract AvailBridge is
      * @notice  Update the address of the VectorX contract
      * @param   newVectorx  Address of new VectorX contract
      */
-    function updateVectorx(IVectorx newVectorx) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateVectorx(
+        IVectorx newVectorx
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vectorx = newVectorx;
     }
 
@@ -129,15 +133,15 @@ contract AvailBridge is
      * @param   assetIds  Asset IDs to update
      * @param   tokenAddresses  Token addresses to update
      */
-    function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateTokens(
+        bytes32[] calldata assetIds,
+        address[] calldata tokenAddresses
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 length = assetIds.length;
         if (length != tokenAddresses.length) {
             revert ArrayLengthMismatch();
         }
-        for (uint256 i = 0; i < length;) {
+        for (uint256 i = 0; i < length; ) {
             tokens[assetIds[i]] = tokenAddresses[i];
             unchecked {
                 ++i;
@@ -150,7 +154,9 @@ contract AvailBridge is
      * @dev     Only callable by governance
      * @param   newFeePerByte  New fee per byte value
      */
-    function updateFeePerByte(uint256 newFeePerByte) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateFeePerByte(
+        uint256 newFeePerByte
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         feePerByte = newFeePerByte;
     }
 
@@ -159,7 +165,9 @@ contract AvailBridge is
      * @dev     Only callable by governance
      * @param   newFeeRecipient  New fee recipient address
      */
-    function updateFeeRecipient(address newFeeRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateFeeRecipient(
+        address newFeeRecipient
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // slither-disable-next-line missing-zero-check
         feeRecipient = newFeeRecipient;
     }
@@ -172,7 +180,7 @@ contract AvailBridge is
         uint256 fee = fees;
         delete fees;
         // slither-disable-next-line low-level-calls
-        (bool success,) = feeRecipient.call{value: fee}("");
+        (bool success, ) = feeRecipient.call{value: fee}("");
         if (!success) {
             revert WithdrawFailed();
         }
@@ -184,7 +192,10 @@ contract AvailBridge is
      * @param   message  Message that is used to reconstruct the bridge leaf
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveMessage(Message calldata message, MerkleProofInput calldata input)
+    function receiveMessage(
+        Message calldata message,
+        MerkleProofInput calldata input
+    )
         external
         whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
@@ -209,13 +220,19 @@ contract AvailBridge is
      * @param   message  Message that is used to reconstruct the bridge leaf
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveAVAIL(Message calldata message, MerkleProofInput calldata input)
+    function receiveAVAIL(
+        Message calldata message,
+        MerkleProofInput calldata input
+    )
         external
         whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
     {
-        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
+        (bytes32 assetId, uint256 value) = abi.decode(
+            message.data,
+            (bytes32, uint256)
+        );
         if (assetId != 0x0) {
             revert InvalidAssetId();
         }
@@ -236,14 +253,20 @@ contract AvailBridge is
      * @param   message  Message that is used to reconstruct the bridge leaf
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveETH(Message calldata message, MerkleProofInput calldata input)
+    function receiveETH(
+        Message calldata message,
+        MerkleProofInput calldata input
+    )
         external
         whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
         nonReentrant
     {
-        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
+        (bytes32 assetId, uint256 value) = abi.decode(
+            message.data,
+            (bytes32, uint256)
+        );
         if (assetId != ETH_ASSET_ID) {
             revert InvalidAssetId();
         }
@@ -256,7 +279,7 @@ contract AvailBridge is
         emit MessageReceived(message.from, dest, message.messageId);
 
         // slither-disable-next-line arbitrary-send-eth,missing-zero-check,low-level-calls
-        (bool success,) = dest.call{value: value}("");
+        (bool success, ) = dest.call{value: value}("");
         if (!success) {
             revert UnlockFailed();
         }
@@ -268,14 +291,20 @@ contract AvailBridge is
      * @param   message  Message that is used to reconstruct the bridge leaf
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveERC20(Message calldata message, MerkleProofInput calldata input)
+    function receiveERC20(
+        Message calldata message,
+        MerkleProofInput calldata input
+    )
         external
         whenNotPaused
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
         nonReentrant
     {
-        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
+        (bytes32 assetId, uint256 value) = abi.decode(
+            message.data,
+            (bytes32, uint256)
+        );
         address token = tokens[assetId];
         if (token == address(0)) {
             revert InvalidAssetId();
@@ -297,7 +326,10 @@ contract AvailBridge is
      * @param   recipient  Recipient of the message on Avail
      * @param   data  Data to send
      */
-    function sendMessage(bytes32 recipient, bytes calldata data) external payable whenNotPaused {
+    function sendMessage(
+        bytes32 recipient,
+        bytes calldata data
+    ) external payable whenNotPaused {
         uint256 length = data.length;
         if (length == 0 || length > MAX_DATA_LENGTH) {
             revert InvalidDataLength();
@@ -312,7 +344,13 @@ contract AvailBridge is
         }
         fees += msg.value;
         Message memory message = Message(
-            MESSAGE_TX_PREFIX, bytes32(bytes20(msg.sender)), recipient, ETH_DOMAIN, AVAIL_DOMAIN, data, uint64(id)
+            MESSAGE_TX_PREFIX,
+            bytes32(bytes20(msg.sender)),
+            recipient,
+            ETH_DOMAIN,
+            AVAIL_DOMAIN,
+            data,
+            uint64(id)
         );
         // store message hash to be retrieved later by our light client
         isSent[id] = keccak256(abi.encode(message));
@@ -326,7 +364,10 @@ contract AvailBridge is
      * @param   recipient  Recipient of the AVAIL tokens on Avail
      * @param   amount  Amount of AVAIL tokens to bridge
      */
-    function sendAVAIL(bytes32 recipient, uint256 amount) external whenNotPaused checkDestAmt(recipient, amount) {
+    function sendAVAIL(
+        bytes32 recipient,
+        uint256 amount
+    ) external whenNotPaused checkDestAmt(recipient, amount) {
         uint256 id;
         unchecked {
             id = messageId++;
@@ -353,7 +394,9 @@ contract AvailBridge is
      * @dev     This function is used for ETH transfers from Ethereum to Avail
      * @param   recipient  Recipient of the ETH on Avail
      */
-    function sendETH(bytes32 recipient) external payable whenNotPaused checkDestAmt(recipient, msg.value) {
+    function sendETH(
+        bytes32 recipient
+    ) external payable whenNotPaused checkDestAmt(recipient, msg.value) {
         uint256 id;
         unchecked {
             id = messageId++;
@@ -380,11 +423,11 @@ contract AvailBridge is
      * @param   recipient  Recipient of the asset on Avail
      * @param   amount  Amount of ERC20 tokens to bridge
      */
-    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount)
-        external
-        whenNotPaused
-        checkDestAmt(recipient, amount)
-    {
+    function sendERC20(
+        bytes32 assetId,
+        bytes32 recipient,
+        uint256 amount
+    ) external whenNotPaused checkDestAmt(recipient, amount) {
         address token = tokens[assetId];
         if (token == address(0)) {
             revert InvalidAssetId();
@@ -416,14 +459,21 @@ contract AvailBridge is
      * @param   input  Merkle tree proof of inclusion for the blob leaf
      * @return  bool  Returns true if the blob leaf is valid, else false
      */
-    function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool) {
+    function verifyBlobLeaf(
+        MerkleProofInput calldata input
+    ) external view returns (bool) {
         if (input.blobRoot == 0x0) {
             revert BlobRootEmpty();
         }
         _checkDataRoot(input);
         // leaf must be keccak(blob)
         // we don't need to check that the leaf is non-zero because we hash the pre-image here
-        return input.leafProof.verify(input.blobRoot, input.leafIndex, keccak256(abi.encode(input.leaf)));
+        return
+            input.leafProof.verify(
+                input.blobRoot,
+                input.leafIndex,
+                keccak256(abi.encode(input.leaf))
+            );
     }
 
     /**
@@ -432,14 +482,19 @@ contract AvailBridge is
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      * @return  bool  Returns true if the bridge leaf is valid, else false
      */
-    function verifyBridgeLeaf(MerkleProofInput calldata input) public view returns (bool) {
+    function verifyBridgeLeaf(
+        MerkleProofInput calldata input
+    ) public view returns (bool) {
         if (input.bridgeRoot == 0x0) {
             revert BridgeRootEmpty();
         }
         _checkDataRoot(input);
         // leaf must be keccak(message)
         // we don't need to check that the leaf is non-zero because we check that the root is non-zero
-        return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
+
+        // Forcefully made it to return false, so bridging won't work for arbSepolia
+        //return input.leafProof.verify(input.bridgeRoot, input.leafIndex, input.leaf);
+        return false;
     }
 
     /**
@@ -457,7 +512,10 @@ contract AvailBridge is
      * @param   message  Message that is used to reconstruct the bridge leaf
      * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function _checkBridgeLeaf(Message calldata message, MerkleProofInput calldata input) private {
+    function _checkBridgeLeaf(
+        Message calldata message,
+        MerkleProofInput calldata input
+    ) private {
         bytes32 leaf = keccak256(abi.encode(message));
         if (isBridged[leaf]) {
             revert AlreadyBridged();
@@ -480,7 +538,9 @@ contract AvailBridge is
      * @param   input  Merkle tree proof of inclusion for the data root
      */
     function _checkDataRoot(MerkleProofInput calldata input) private view {
-        bytes32 dataRootCommitment = vectorx.dataRootCommitments(input.rangeHash);
+        bytes32 dataRootCommitment = vectorx.dataRootCommitments(
+            input.rangeHash
+        );
         if (dataRootCommitment == 0x0) {
             revert DataRootCommitmentEmpty();
         }
@@ -488,7 +548,9 @@ contract AvailBridge is
         // also part of the commitment tree
         if (
             !input.dataRootProof.verifySha2(
-                dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
+                dataRootCommitment,
+                input.dataRootIndex,
+                keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
             )
         ) {
             revert InvalidDataRootProof();

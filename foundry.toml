@@ -16,4 +16,8 @@ runs = 10000
 sepolia = "https://ethereum-sepolia.publicnode.com"
 goerli = "https://ethereum-goerli.publicnode.com"
 
+
+[etherscan]
+sepolia = { key = "${ARBIRSCAN_API_KEY}" }
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
