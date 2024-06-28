@@ -38,7 +38,7 @@ contract AvailAttestationTest is Test {
         attestation.attest(input);
         assertEq(vectorx.rangeStartBlocks(input.rangeHash), startBlockNumber);
         (uint32 blockNumber, uint128 leafIndex) = attestation.attestations(input.leaf);
-        assertEq(blockNumber, startBlockNumber + input.dataRootIndex);
+        assertEq(blockNumber, startBlockNumber + input.dataRootIndex + 1);
         assertEq(leafIndex, input.leafIndex);
     }
 }
