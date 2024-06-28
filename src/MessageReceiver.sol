@@ -30,5 +30,6 @@ abstract contract MessageReceiver is Initializable, IMessageReceiver {
     // slither-disable-next-line,unimplemented-functions
     function _onAvailMessage(bytes32 from, bytes calldata data) internal virtual;
 
+    // slither-disable-next-line naming-convention
     uint256[50] private __gap;
 }

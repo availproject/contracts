@@ -37,7 +37,7 @@ contract AvailBridgeV1 is
     uint32 private constant ETH_DOMAIN = 2;
     uint256 private constant MAX_DATA_LENGTH = 102_400;
     // Derived from abi.encodePacked("ETH")
-    // slither-disable-next-line too-many-digits
+    // slither-disable-next-line too-many-digits,unused-state
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     // map store spent message hashes, used for Avail -> Ethereum messages

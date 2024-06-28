@@ -33,9 +33,10 @@ abstract contract AvailAttestation is Initializable {
     function _attest(IAvailBridge.MerkleProofInput calldata input) internal virtual {
         if (!bridge.verifyBlobLeaf(input)) revert InvalidAttestationProof();
         attestations[input.leaf] = AttestationData(
-            vectorx.rangeStartBlocks(input.rangeHash) + uint32(input.dataRootIndex), uint128(input.leafIndex)
+            vectorx.rangeStartBlocks(input.rangeHash) + uint32(input.dataRootIndex) + 1, uint128(input.leafIndex)
         );
     }
 
+    // slither-disable-next-line naming-convention
     uint256[50] private __gap;
 }
