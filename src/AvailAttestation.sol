@@ -36,4 +36,6 @@ abstract contract AvailAttestation is Initializable {
             vectorx.rangeStartBlocks(input.rangeHash) + uint32(input.dataRootIndex), uint128(input.leafIndex)
         );
     }
+
+    uint256[50] private __gap;
 }
