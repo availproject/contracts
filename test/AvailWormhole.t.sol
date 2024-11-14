@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.28;
 
-import {AvailWormhole} from "src/bridged/AvailWormhole.sol";
+import {AvailWormhole} from "src/AvailWormhole.sol";
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
