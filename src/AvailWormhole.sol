@@ -9,6 +9,12 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {INttToken} from "src/interfaces/INttToken.sol";
 
+/**
+ * @author  @QEDK (Avail)
+ * @title   Avail ERC20 token with support for Wormhole
+ * @notice  An Avail token implementation for Wormhole-based bridges
+ * @custom:security security@availproject.org
+ */
 contract AvailWormhole is AccessControlDefaultAdminRulesUpgradeable, ERC20PermitUpgradeable, INttToken {
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
