@@ -22,11 +22,10 @@ contract AvailWormhole is AccessControlDefaultAdminRulesUpgradeable, ERC20Permit
         _disableInitializers();
     }
 
-    function initialize(address governance, address minter) external initializer {
+    function initialize(address governance) external initializer {
         __ERC20Permit_init("Avail (Wormhole)");
         __ERC20_init("Avail (Wormhole)", "AVAIL.W");
         __AccessControlDefaultAdminRules_init(0, governance);
-        _grantRole(MINTER_ROLE, minter);
     }
 
     function mint(address account, uint256 amount) external onlyRole(MINTER_ROLE) {
