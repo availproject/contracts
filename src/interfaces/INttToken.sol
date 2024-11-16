@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.25;
 
 interface INttToken {
     // NOTE: the `mint` method is not present in the standard ERC20 interface.
