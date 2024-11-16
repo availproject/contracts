@@ -19,12 +19,14 @@ contract AvailWormholeTest is Test {
         minter = makeAddr("minter");
         address impl = address(new AvailWormhole());
         avail = AvailWormhole(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
-        avail.initialize(governance, minter);
+        avail.initialize(governance);
+        vm.prank(governance);
+        avail.grantRole(MINTER_ROLE, minter);
     }
 
     function testRevert_initialize(address rand) external {
         vm.expectRevert();
-        avail.initialize(rand, rand);
+        avail.initialize(rand);
     }
 
     function test_initialize() external {
