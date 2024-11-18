@@ -4,7 +4,9 @@ out = "out"
 libs = ["lib"]
 optimizer = true
 optimizer_runs = 999999
+via_ir = true
 solc_version = "0.8.25"
+evm_version = "cancun"
 
 [profile.intense.fuzz]
 max_test_rejects = 999999
