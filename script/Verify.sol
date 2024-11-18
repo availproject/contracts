@@ -28,16 +28,9 @@ contract VerificationTester is Script {
         console.log("Deployed bytecode length:", deployedBytecode.length);
         console.log("On-chain bytecode length:", onchainBytecode.length);
 
-        // Compare bytecode (first 100 bytes for quick check)
-        bytes memory deployedPrefix = new bytes(14613);
-        bytes memory onchainPrefix = new bytes(14613);
-        for (uint256 i = 0; i < 14613; i++) {
-            if (i < deployedBytecode.length) deployedPrefix[i] = deployedBytecode[i];
-            if (i < onchainBytecode.length) onchainPrefix[i] = onchainBytecode[i];
-        }
-
-        console.logBytes(deployedPrefix);
         console.log("          ##############          ");
-        console.logBytes(onchainPrefix);
+        console.logBytes(deployedBytecode);
+        console.log("          ##############          ");
+        console.logBytes(onchainBytecode);
     }
 }
