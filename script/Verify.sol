@@ -6,7 +6,7 @@ import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
 contract VerificationTester is Script {
-    function run() public {
+    function run() external view {
         // Load environment variables;
         address CONTRACT_ADDRESS = 0xEaf1db02ad660f832AAa6F84F2Cb639c0F1cB5C6;
 
