@@ -29,7 +29,7 @@ contract AvailWormholeTest is Test {
         avail.initialize(rand);
     }
 
-    function test_initialize() external {
+    function test_initialize() external view {
         assertEq(avail.totalSupply(), 0);
         assertNotEq(avail.owner(), address(0));
         assertEq(avail.owner(), governance);
