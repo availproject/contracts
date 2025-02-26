@@ -40,6 +40,50 @@ interface IAvailBridge {
         uint256 leafIndex;
     }
 
+    struct FusionMessage {
+        bytes1 messageType;
+        bytes data;
+    }
+
+    // 0x01
+    struct FusionDeposit {
+        uint256 poolId;
+        bytes32 asset;
+        uint256 amount;
+    }
+
+    // 0x02
+    struct FusionStake {
+        uint256 poolId;
+        bytes32 asset;
+        uint256 amount;
+    }
+
+    // 0x03
+    struct FusionUnbond {
+        uint256 poolId;
+        bytes32 asset;
+        uint256 amount;
+    }
+
+    // 0x04
+    struct FusionWithdraw {
+        uint256 poolId;
+        bytes32 asset;
+        uint256 amount;
+    }
+
+    // 0x05
+    struct FusionCompound {
+        uint256 poolId;
+        bool shouldCompound;
+    }
+
+    // 0x06
+    struct FusionSetController {
+        bytes32 controller;
+    }
+
     event MessageReceived(bytes32 indexed from, address indexed to, uint256 messageId);
     event MessageSent(address indexed from, bytes32 indexed to, uint256 messageId);
 

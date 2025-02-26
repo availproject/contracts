@@ -39,6 +39,9 @@ contract AvailBridgeV1 is
     // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits,unused-state
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
+    // Derived from abi.encodePacked("BTC")
+    // slither-disable-next-line too-many-digits,unused-state
+    bytes32 private constant BTC_ASSET_ID = 0x4254430000000000000000000000000000000000000000000000000000000000;
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;
@@ -53,6 +56,7 @@ contract AvailBridgeV1 is
     uint256 public fees; // total fees accumulated by bridge
     uint256 public feePerByte; // in wei
     uint256 public messageId; // next nonce
+    mapping (uint256 => bytes32) public pools;
 
     error Unimplemented();
 
@@ -141,6 +145,28 @@ contract AvailBridgeV1 is
         }
         for (uint256 i = 0; i < length;) {
             tokens[assetIds[i]] = tokenAddresses[i];
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice  Function to update pool ID -> asset mapping
+     * @dev     Only callable by governance
+     * @param   poolIds  Pool IDs to update
+     * @param   assetIds  Assets to update
+     */
+    function updatePools(uint256[] calldata poolIds, bytes32[] calldata assetIds)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        uint256 length = poolIds.length;
+        if (length != assetIds.length) {
+            revert ArrayLengthMismatch();
+        }
+        for (uint256 i = 0; i < length;) {
+            pools[poolIds[i]] = assetIds[i];
             unchecked {
                 ++i;
             }
@@ -326,6 +352,18 @@ contract AvailBridgeV1 is
      */
     function sendETH(bytes32 recipient) external payable whenNotPaused checkDestAmt(recipient, msg.value) {
         revert Unimplemented(); // not implemented
+    }
+
+    function stakeETH(uint256 poolId, uint256 amount) external payable whenNotPaused checkDestAmt(0x0, amount) {
+        bytes32 assetId = pools[poolId];
+        if (assetId == 0x0) {
+            revert InvalidAssetId();
+        }
+        address token = tokens[assetId];
+        if (token == address(0)) {
+            revert InvalidAssetId();
+        }
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
