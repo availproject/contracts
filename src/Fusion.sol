@@ -11,7 +11,13 @@ import {MessageReceiver} from "./MessageReceiver.sol";
 import {IAvailBridge} from "./interfaces/IAvailBridge.sol";
 import {IFusion} from "./interfaces/IFusion.sol";
 
-contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeable, MulticallUpgradeable, MessageReceiver, IFusion {
+contract Fusion is
+    PausableUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
+    MulticallUpgradeable,
+    MessageReceiver,
+    IFusion
+{
     using SafeERC20 for IERC20;
 
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -20,11 +26,14 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
     bytes32 public fusion;
 
     /// @dev Pool ID -> pool data
-    mapping (bytes32 => Pool) public pools;
+    mapping(bytes32 => Pool) public pools;
     /// @dev Pool ID -> user address -> amount staked
-    mapping (bytes32 => mapping (address => uint256)) public stakes;
+    mapping(bytes32 => mapping(address => uint256)) public stakes;
 
-    function initialize(IAvailBridge newBridge, bytes32 newFusion, address governance, address pauser) external initializer {
+    function initialize(IAvailBridge newBridge, bytes32 newFusion, address governance, address pauser)
+        external
+        initializer
+    {
         bridge = newBridge;
         fusion = newFusion;
         __MessageReceiver_init(address(newBridge));
@@ -52,7 +61,11 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         }
     }
 
-    function stake(bytes32 poolId, uint256 amount, bytes32 controller, bool toCompound) external payable whenNotPaused {
+    function stake(bytes32 poolId, uint256 amount, bytes32 controller, bool toCompound)
+        external
+        payable
+        whenNotPaused
+    {
         if (controller == bytes32(0)) {
             revert InvalidController();
         }
@@ -67,14 +80,8 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
             revert InvalidAmount();
         }
         uint256 messageSize = 1;
-        FusionStake memory stakeMessage = FusionStake({
-            poolId: poolId,
-            amount: amount
-        });
-        FusionSetCompounding memory compoundMessage = FusionSetCompounding({
-            poolId: poolId,
-            toCompound: toCompound
-        });
+        FusionStake memory stakeMessage = FusionStake({poolId: poolId, amount: amount});
+        FusionSetCompounding memory compoundMessage = FusionSetCompounding({poolId: poolId, toCompound: toCompound});
         if (controller != bytes32(0)) {
             messageSize += 1;
         }
@@ -90,11 +97,9 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         }
         pool.token.safeTransferFrom(msg.sender, address(this), amount);
         stakes[poolId][msg.sender] += amount;
-        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessage({
-            account: msg.sender,
-            messageType: messageTypes,
-            data: data
-        })));
+        bridge.sendMessage{value: msg.value}(
+            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
+        );
 
         emit Staked(poolId, msg.sender, amount);
     }
@@ -110,19 +115,14 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         if (amount < pool.minWithdrawal) {
             revert InvalidAmount();
         }
-        FusionUnbond memory unbondMessage = FusionUnbond({
-            poolId: poolId,
-            amount: amount
-        });
+        FusionUnbond memory unbondMessage = FusionUnbond({poolId: poolId, amount: amount});
         FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
         bytes[] memory data = new bytes[](1);
         messageTypes[0] = FusionMessageTypes.Unbond;
         data[0] = abi.encode(unbondMessage);
-        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessage({
-            account: msg.sender,
-            messageType: messageTypes,
-            data: data
-        })));
+        bridge.sendMessage{value: msg.value}(
+            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
+        );
 
         emit Unbonded(poolId, msg.sender, amount);
     }
@@ -138,19 +138,14 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         if (amount < pool.minWithdrawal) {
             revert InvalidAmount();
         }
-        FusionWithdraw memory withdrawMessage = FusionWithdraw({
-            poolId: poolId,
-            amount: amount
-        });
+        FusionWithdraw memory withdrawMessage = FusionWithdraw({poolId: poolId, amount: amount});
         FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
         bytes[] memory data = new bytes[](1);
         messageTypes[0] = FusionMessageTypes.Withdraw;
         data[0] = abi.encode(withdrawMessage);
-        bridge.sendMessage(fusion, abi.encode(FusionMessage({
-            account: msg.sender,
-            messageType: messageTypes,
-            data: data
-        })));
+        bridge.sendMessage(
+            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
+        );
 
         emit Withdrawn(poolId, msg.sender, amount);
     }
@@ -160,19 +155,14 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        FusionClaim memory claimMessage = FusionClaim({
-            poolId: poolId,
-            amount: amount
-        });
+        FusionClaim memory claimMessage = FusionClaim({poolId: poolId, amount: amount});
         FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
         bytes[] memory data = new bytes[](1);
         messageTypes[0] = FusionMessageTypes.Claim;
         data[0] = abi.encode(claimMessage);
-        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessage({
-            account: msg.sender,
-            messageType: messageTypes,
-            data: data
-        })));
+        bridge.sendMessage{value: msg.value}(
+            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
+        );
 
         emit Claimed(poolId, msg.sender, amount);
     }
@@ -182,19 +172,14 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        FusionSetCompounding memory compoundMessage = FusionSetCompounding({
-            poolId: poolId,
-            toCompound: toCompound
-        });
+        FusionSetCompounding memory compoundMessage = FusionSetCompounding({poolId: poolId, toCompound: toCompound});
         FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
         bytes[] memory data = new bytes[](1);
         messageTypes[0] = FusionMessageTypes.SetCompounding;
         data[0] = abi.encode(compoundMessage);
-        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessage({
-            account: msg.sender,
-            messageType: messageTypes,
-            data: data
-        })));
+        bridge.sendMessage{value: msg.value}(
+            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
+        );
 
         emit CompoundingSet(poolId, msg.sender, toCompound);
     }
@@ -207,18 +192,14 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        FusionSetController memory controllerMessage = FusionSetController({
-            controller: controller
-        });
+        FusionSetController memory controllerMessage = FusionSetController({controller: controller});
         FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
         bytes[] memory data = new bytes[](1);
         messageTypes[0] = FusionMessageTypes.SetController;
         data[0] = abi.encode(controllerMessage);
-        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessage({
-            account: msg.sender,
-            messageType: messageTypes,
-            data: data
-        })));
+        bridge.sendMessage{value: msg.value}(
+            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
+        );
 
         emit ControllerSet(poolId, msg.sender, controller);
     }
@@ -228,7 +209,10 @@ contract Fusion is PausableUpgradeable, AccessControlDefaultAdminRulesUpgradeabl
             revert OnlyFusionPallet();
         }
         FusionMessage memory message = abi.decode(data, (FusionMessage));
-        if (message.messageType.length != 1 || message.messageType.length != message.data.length || message.messageType[0] != FusionMessageTypes.Unstake) {
+        if (
+            message.messageType.length != 1 || message.messageType.length != message.data.length
+                || message.messageType[0] != FusionMessageTypes.Unstake
+        ) {
             revert InvalidMessage();
         }
         FusionUnstake memory unstakeMessage = abi.decode(message.data[0], (FusionUnstake));
