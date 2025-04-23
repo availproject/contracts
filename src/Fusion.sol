@@ -134,6 +134,8 @@ contract Fusion is
                 _stake(message);
             } else if (message.messageType == FusionMessageType.Unbond) {
                 _unbond(message);
+            } else if (message.messageType == FusionMessageType.Pull) {
+                _pull(message);
             } else if (message.messageType == FusionMessageType.Withdraw) {
                 _withdraw(message);
             } else if (message.messageType == FusionMessageType.Extract) {
@@ -208,6 +210,19 @@ contract Fusion is
         }
     }
 
+    function _pull(
+        FusionMessage memory message
+    ) private view {
+        FusionPull memory pullMessage = abi.decode(message.data, (FusionPull));
+        Pool memory pool = pools[pullMessage.poolId];
+        if (address(pool.token) == address(0)) {
+            revert InvalidPoolId();
+        }
+        if (pullMessage.amount < pool.minPullAmount) {
+            revert InvalidAmount();
+        }
+    }
+
     function _withdraw(
         FusionMessage memory message
     ) private view {
@@ -229,10 +244,7 @@ contract Fusion is
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        if (!pool.unbondingEnabled) {
-            revert WithdrawalsDisabled();
-        }
-        if (extractMessage.amount < pool.minUnbondingAmount) {
+        if (extractMessage.amount < pool.minExtractionAmount) {
             revert InvalidAmount();
         }
     }
