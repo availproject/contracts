@@ -6,12 +6,16 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 interface IFusion {
     error ArrayLengthMismatch();
     error DepositsDisabled();
+    error ExceedsGlobalLimit();
     error WithdrawalsDisabled();
     error InvalidAmount();
+    error InvalidAsset();
     error InvalidController();
     error InvalidMessage();
     error InvalidPoolId();
     error OnlyFusionPallet();
+    error StakingDisabled();
+    error UnbondingDisabled();
 
     event Staked(bytes32 indexed poolId, address indexed account, uint256 amount);
     event Unstaked(bytes32 indexed poolId, address indexed account, uint256 amount);
@@ -21,45 +25,81 @@ interface IFusion {
     event CompoundingSet(bytes32 indexed poolId, address indexed account, bool toCompound);
     event ControllerSet(bytes32 indexed poolId, address indexed account, bytes32 controller);
 
-    enum FusionMessageTypes {
+    enum FusionMessageType {
+        /// @dev Deposit assets from Ethereum to Avail
+        Deposit,
+        /// @dev Stake assets on Avail
         Stake,
+        /// @dev Unbond assets on Avail
         Unbond,
+        /// @dev Withdraw assets from Avail to Ethereum
         Withdraw,
+        /// @dev Withdraw assets on Avail and send it to the controller
+        Extract,
+        /// @dev Claim rewards on Avail and send it to the controller
         Claim,
-        Unstake,
+        /// @dev Sets a boost allocation for the pool
+        Boost,
+        /// @dev Sets the compounding status for the pool
         SetCompounding,
-        SetController
+        /// @dev Sets the controller for the pool
+        SetController,
+        /// @dev Unstake assets from Avail to Ethereum (not externally callable)
+        Unstake
     }
 
     struct Pool {
         /// @dev The address deposited into the pool
         IERC20 token;
-        /// @dev The total amount that can be staked in the pool
+        /// @dev Minimum amount for each staking action
+        uint256 minStakingAmount;
+        /// @dev Minimum amount for each unbonding action
+        uint256 minUnbondingAmount;
+        /// @dev If the pool stakings are enabled
+        bool stakingEnabled;
+        /// @dev If the pool unbondings are enabled
+        bool unbondingEnabled;
+    }
+
+    struct Asset {
+        /// @dev The limit of the asset
         uint256 limit;
-        /// @dev Minimum amount for each deposit
-        uint256 minDeposit;
-        /// @dev Minimum amount for each withdrawal
-        uint256 minWithdrawal;
-        /// @dev If the pool deposits are enabled
+        /// @dev Minimum amount for each deposit action
+        uint256 minDepositAmount;
+        /// @dev Minimum amount for each withdrawal action
+        uint256 minWithdrawalAmount;
+        /// @dev If the asset deposits are enabled
         bool depositsEnabled;
-        /// @dev If the pool withdrawals are enabled
+        /// @dev If the asset withdrawals are enabled
         bool withdrawalsEnabled;
     }
 
-    struct FusionMessage {
-        /// @dev The account on Ethereum that owns the position
+    struct FusionMessageBundle {
+        /// @dev The account on Ethereum that is sending the bundle
         address account;
-        /// @dev The message type byte
-        FusionMessageTypes[] messageType;
-        /// @dev Array of payloads
-        bytes[] data;
+        /// @dev The payload is encoded as an array of wrapped messages
+        FusionMessage[] messages;
+    }
+
+    struct FusionMessage {
+        /// @dev The message type
+        FusionMessageType messageType;
+        /// @dev The payload
+        bytes data;
+    }
+
+    struct FusionDeposit {
+        /// @dev The token being deposited
+        IERC20 token;
+        /// @dev The amount to deposit (in wei)
+        uint256 amount;
     }
 
     /// @dev Initiates a deposit to Avail and stake into the pool
     struct FusionStake {
         /// @dev The pool ID
         bytes32 poolId;
-        /// @dev The amount to deposit (in wei)
+        /// @dev The amount to stake (in wei)
         uint256 amount;
     }
 
@@ -71,11 +111,19 @@ interface IFusion {
         uint256 amount;
     }
 
-    /// @dev Initiates a withdrawal from the pool to Ethereum
+    /// @dev Initiates a withdrawal from the Fusion balance to Ethereum
     struct FusionWithdraw {
+        /// @dev Token address
+        IERC20 token;
+        /// @dev The amount to withdraw (in wei)
+        uint256 amount;
+    }
+
+    /// @dev Initiates a withdrawal from the pool to the controller
+    struct FusionExtract {
         /// @dev The pool ID
         bytes32 poolId;
-        /// @dev The amount to withdraw (in wei)
+        /// @dev The amount to extract (in wei)
         uint256 amount;
     }
 
@@ -95,6 +143,14 @@ interface IFusion {
         uint256 amount;
     }
 
+    /// @dev Sets a boost allocation for the pool
+    struct FusionBoost {
+        /// @dev The pool ID
+        bytes32 poolId;
+        /// @dev The amount to boost the pool (in wei)
+        uint256 amount;
+    }
+
     /// @dev Sets the compounding status for the pool for an account
     struct FusionSetCompounding {
         /// @dev The pool ID
@@ -103,7 +159,7 @@ interface IFusion {
         bool toCompound;
     }
 
-    /// @dev Sets the controller for the pool for an account
+    /// @dev Sets the controller for an account
     struct FusionSetController {
         /// @dev A controller on Avail who can manage the position
         bytes32 controller;
