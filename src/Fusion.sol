@@ -30,7 +30,7 @@ contract Fusion is
 
     /// @dev Pool ID -> pool data
     mapping(bytes32 => Pool) public pools;
-    /// @dev Token address -> limit 
+    /// @dev Token address -> limit
     mapping(IERC20 => Asset) public assets;
     /// @dev Token address -> balance
     mapping(IERC20 => uint256) public balances;
@@ -155,12 +155,12 @@ contract Fusion is
                 ++i;
             }
         }
-        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessageBundle({account: msg.sender, messages: messages})));
+        bridge.sendMessage{value: msg.value}(
+            fusion, abi.encode(FusionMessageBundle({account: msg.sender, messages: messages}))
+        );
     }
 
-    function _deposit(
-        FusionMessage memory message
-    ) private {
+    function _deposit(FusionMessage memory message) private {
         FusionDeposit memory depositMessage = abi.decode(message.data, (FusionDeposit));
         Asset memory asset = assets[depositMessage.token];
         uint256 balance = balances[depositMessage.token];
@@ -178,9 +178,7 @@ contract Fusion is
         depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
     }
 
-    function _stake(
-        FusionMessage memory message
-    ) private {
+    function _stake(FusionMessage memory message) private {
         FusionStake memory stakeMessage = abi.decode(message.data, (FusionStake));
         Pool memory pool = pools[stakeMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -194,9 +192,7 @@ contract Fusion is
         }
     }
 
-    function _unbond(
-        FusionMessage memory message
-    ) private view {
+    function _unbond(FusionMessage memory message) private view {
         FusionUnbond memory unbondMessage = abi.decode(message.data, (FusionUnbond));
         Pool memory pool = pools[unbondMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -210,9 +206,7 @@ contract Fusion is
         }
     }
 
-    function _pull(
-        FusionMessage memory message
-    ) private view {
+    function _pull(FusionMessage memory message) private view {
         FusionPull memory pullMessage = abi.decode(message.data, (FusionPull));
         Pool memory pool = pools[pullMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -223,9 +217,7 @@ contract Fusion is
         }
     }
 
-    function _withdraw(
-        FusionMessage memory message
-    ) private view {
+    function _withdraw(FusionMessage memory message) private view {
         FusionWithdraw memory withdrawMessage = abi.decode(message.data, (FusionWithdraw));
         Asset memory asset = assets[withdrawMessage.token];
         if (!asset.withdrawalsEnabled) {
@@ -236,9 +228,7 @@ contract Fusion is
         }
     }
 
-    function _extract(
-        FusionMessage memory message
-    ) private view {
+    function _extract(FusionMessage memory message) private view {
         FusionExtract memory extractMessage = abi.decode(message.data, (FusionExtract));
         Pool memory pool = pools[extractMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -249,9 +239,7 @@ contract Fusion is
         }
     }
 
-    function _claim(
-        FusionMessage memory message
-    ) private view {
+    function _claim(FusionMessage memory message) private view {
         FusionClaim memory claimMessage = abi.decode(message.data, (FusionClaim));
         Pool memory pool = pools[claimMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -265,9 +253,7 @@ contract Fusion is
         }
     }
 
-    function _boost(
-        FusionMessage memory message
-    ) private view {
+    function _boost(FusionMessage memory message) private view {
         FusionBoost memory boostMessage = abi.decode(message.data, (FusionBoost));
         Pool memory pool = pools[boostMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -278,9 +264,7 @@ contract Fusion is
         }
     }
 
-    function _setCompounding(
-        FusionMessage memory message
-    ) private view {
+    function _setCompounding(FusionMessage memory message) private view {
         FusionSetCompounding memory setCompoundingMessage = abi.decode(message.data, (FusionSetCompounding));
         Pool memory pool = pools[setCompoundingMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -288,9 +272,7 @@ contract Fusion is
         }
     }
 
-    function _setController(
-        FusionMessage memory message
-    ) private pure {
+    function _setController(FusionMessage memory message) private pure {
         FusionSetController memory setControllerMessage = abi.decode(message.data, (FusionSetController));
         if (setControllerMessage.controller == bytes32(0)) {
             revert InvalidController();
@@ -303,9 +285,7 @@ contract Fusion is
         }
         FusionMessageBundle memory bundle = abi.decode(data, (FusionMessageBundle));
         FusionMessage memory message = bundle.messages[0];
-        if (
-            message.messageType != FusionMessageType.Unstake
-        ) {
+        if (message.messageType != FusionMessageType.Unstake) {
             revert InvalidMessage();
         }
         FusionUnstake memory unstakeMessage = abi.decode(message.data, (FusionUnstake));

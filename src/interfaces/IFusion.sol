@@ -80,6 +80,7 @@ interface IFusion {
         bool withdrawalsEnabled;
     }
     /// @dev The Fusion message bundle is sent to the Fusion pallet
+
     struct FusionMessageBundle {
         /// @dev The account on Ethereum that is sending the bundle
         address account;
@@ -87,6 +88,7 @@ interface IFusion {
         FusionMessage[] messages;
     }
     /// @dev A message that is sent to the Fusion pallet
+
     struct FusionMessage {
         /// @dev The message type
         FusionMessageType messageType;
@@ -94,6 +96,7 @@ interface IFusion {
         bytes data;
     }
     /// @dev Initiates a deposit to Avail as Fusion balance
+
     struct FusionDeposit {
         /// @dev The token being deposited
         IERC20 token;
