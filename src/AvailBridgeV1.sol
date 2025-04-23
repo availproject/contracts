@@ -39,9 +39,6 @@ contract AvailBridgeV1 is
     // Derived from abi.encodePacked("ETH")
     // slither-disable-next-line too-many-digits,unused-state
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
-    // Derived from abi.encodePacked("BTC")
-    // slither-disable-next-line too-many-digits,unused-state
-    bytes32 private constant BTC_ASSET_ID = 0x4254430000000000000000000000000000000000000000000000000000000000;
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     // map store spent message hashes, used for Avail -> Ethereum messages
     mapping(bytes32 => bool) public isBridged;

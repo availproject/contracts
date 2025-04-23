@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.29;
 
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {MulticallUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/MulticallUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {MessageReceiver} from "./MessageReceiver.sol";
@@ -15,6 +17,7 @@ contract Fusion is
     PausableUpgradeable,
     AccessControlDefaultAdminRulesUpgradeable,
     MulticallUpgradeable,
+    ReentrancyGuardUpgradeable,
     MessageReceiver,
     IFusion
 {
@@ -27,8 +30,14 @@ contract Fusion is
 
     /// @dev Pool ID -> pool data
     mapping(bytes32 => Pool) public pools;
-    /// @dev Pool ID -> user address -> amount staked
-    mapping(bytes32 => mapping(address => uint256)) public stakes;
+    /// @dev Token address -> limit 
+    mapping(IERC20 => Asset) public assets;
+    /// @dev Token address -> balance
+    mapping(IERC20 => uint256) public balances;
+
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(IAvailBridge newBridge, bytes32 newFusion, address governance, address pauser)
         external
@@ -40,6 +49,36 @@ contract Fusion is
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
         __Pausable_init();
+    }
+
+    /**
+     * @notice  Updates pause status of the deposit contract
+     * @param   status  New pause status
+     */
+    function setPaused(bool status) external onlyRole(PAUSER_ROLE) {
+        if (status) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
+    /**
+     * @notice  Function to update the fusion pot address
+     * @dev     Only callable by governance
+     * @param   newFusion  New fusion pot address
+     */
+    function updateFusion(bytes32 newFusion) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        fusion = newFusion;
+    }
+
+    /**
+     * @notice  Function to update the bridge contract address
+     * @dev     Only callable by governance
+     * @param   newBridge  New bridge contract address
+     */
+    function updateBridge(IAvailBridge newBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        bridge = newBridge;
     }
 
     /**
@@ -61,172 +100,210 @@ contract Fusion is
         }
     }
 
-    function stake(bytes32 poolId, uint256 amount, bytes32 controller, bool toCompound)
-        external
-        payable
-        whenNotPaused
-    {
-        if (controller == bytes32(0)) {
-            revert InvalidController();
+    /**
+     * @notice  Function to update token address -> asset mapping
+     * @dev     Only callable by governance
+     * @param   tokens  Tokens to update
+     * @param   newAssets  New asset data
+     */
+    function updateAssets(IERC20[] calldata tokens, Asset[] calldata newAssets) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 length = newAssets.length;
+        if (length != tokens.length) {
+            revert ArrayLengthMismatch();
         }
-        Pool memory pool = pools[poolId];
-        if (address(pool.token) == address(0)) {
-            revert InvalidPoolId();
+        for (uint256 i = 0; i < length;) {
+            assets[tokens[i]] = newAssets[i];
+            unchecked {
+                ++i;
+            }
         }
-        if (!pool.depositsEnabled) {
+    }
+
+    /**
+     * @notice  Function to send Fusion messages via the bridge to the Fusion pallet
+     * @dev     We use nonReentrant here because we break the CEI pattern
+     * @param   messages  Fusion messages to be sent as a bundle
+     */
+    function execute(FusionMessage[] calldata messages) external payable whenNotPaused nonReentrant {
+        uint256 length = messages.length;
+        for (uint256 i = 0; i < length;) {
+            FusionMessage memory message = messages[i];
+            if (message.messageType == FusionMessageType.Deposit) {
+                _deposit(message);
+            } else if (message.messageType == FusionMessageType.Stake) {
+                _stake(message);
+            } else if (message.messageType == FusionMessageType.Unbond) {
+                _unbond(message);
+            } else if (message.messageType == FusionMessageType.Withdraw) {
+                _withdraw(message);
+            } else if (message.messageType == FusionMessageType.Extract) {
+                _extract(message);
+            } else if (message.messageType == FusionMessageType.Claim) {
+                _claim(message);
+            } else if (message.messageType == FusionMessageType.Boost) {
+                _boost(message);
+            } else if (message.messageType == FusionMessageType.SetCompounding) {
+                _setCompounding(message);
+            } else if (message.messageType == FusionMessageType.SetController) {
+                _setController(message);
+            } else {
+                assert(false); // unreachable
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        bridge.sendMessage{value: msg.value}(fusion, abi.encode(FusionMessageBundle({account: msg.sender, messages: messages})));
+    }
+
+    function _deposit(
+        FusionMessage memory message
+    ) private {
+        FusionDeposit memory depositMessage = abi.decode(message.data, (FusionDeposit));
+        Asset memory asset = assets[depositMessage.token];
+        uint256 balance = balances[depositMessage.token];
+        uint256 newBalance = balance + depositMessage.amount;
+        if (newBalance > asset.limit) {
+            revert ExceedsGlobalLimit();
+        }
+        if (!asset.depositsEnabled) {
             revert DepositsDisabled();
         }
-        if (amount < pool.minDeposit) {
+        if (depositMessage.amount < asset.minDepositAmount) {
             revert InvalidAmount();
         }
-        uint256 messageSize = 1;
-        FusionStake memory stakeMessage = FusionStake({poolId: poolId, amount: amount});
-        FusionSetCompounding memory compoundMessage = FusionSetCompounding({poolId: poolId, toCompound: toCompound});
-        if (controller != bytes32(0)) {
-            messageSize += 1;
-        }
-        FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](messageSize);
-        bytes[] memory data = new bytes[](messageSize);
-        messageTypes[0] = FusionMessageTypes.Stake;
-        data[0] = abi.encode(stakeMessage);
-        messageTypes[1] = FusionMessageTypes.SetCompounding;
-        data[1] = abi.encode(compoundMessage);
-        if (controller != bytes32(0)) {
-            messageTypes[2] = FusionMessageTypes.SetController;
-            data[2] = abi.encode(controller);
-        }
-        pool.token.safeTransferFrom(msg.sender, address(this), amount);
-        stakes[poolId][msg.sender] += amount;
-        bridge.sendMessage{value: msg.value}(
-            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
-        );
-
-        emit Staked(poolId, msg.sender, amount);
+        balances[depositMessage.token] = newBalance;
+        depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
     }
 
-    function unbond(bytes32 poolId, uint256 amount) external payable whenNotPaused {
-        Pool memory pool = pools[poolId];
+    function _stake(
+        FusionMessage memory message
+    ) private {
+        FusionStake memory stakeMessage = abi.decode(message.data, (FusionStake));
+        Pool memory pool = pools[stakeMessage.poolId];
+        if (address(pool.token) == address(0)) {
+            revert InvalidPoolId();
+        }
+        if (!pool.stakingEnabled) {
+            revert StakingDisabled();
+        }
+        if (stakeMessage.amount < pool.minStakingAmount) {
+            revert InvalidAmount();
+        }
+    }
+
+    function _unbond(
+        FusionMessage memory message
+    ) private view {
+        FusionUnbond memory unbondMessage = abi.decode(message.data, (FusionUnbond));
+        Pool memory pool = pools[unbondMessage.poolId];
+        if (address(pool.token) == address(0)) {
+            revert InvalidPoolId();
+        }
+        if (!pool.unbondingEnabled) {
+            revert UnbondingDisabled();
+        }
+        if (unbondMessage.amount < pool.minUnbondingAmount) {
+            revert InvalidAmount();
+        }
+    }
+
+    function _withdraw(
+        FusionMessage memory message
+    ) private view {
+        FusionWithdraw memory withdrawMessage = abi.decode(message.data, (FusionWithdraw));
+        Asset memory asset = assets[withdrawMessage.token];
+        if (!asset.withdrawalsEnabled) {
+            revert WithdrawalsDisabled();
+        }
+        if (withdrawMessage.amount < asset.minWithdrawalAmount) {
+            revert InvalidAmount();
+        }
+    }
+
+    function _extract(
+        FusionMessage memory message
+    ) private view {
+        FusionExtract memory extractMessage = abi.decode(message.data, (FusionExtract));
+        Pool memory pool = pools[extractMessage.poolId];
+        if (address(pool.token) == address(0)) {
+            revert InvalidPoolId();
+        }
+        if (!pool.unbondingEnabled) {
+            revert WithdrawalsDisabled();
+        }
+        if (extractMessage.amount < pool.minUnbondingAmount) {
+            revert InvalidAmount();
+        }
+    }
+
+    function _claim(
+        FusionMessage memory message
+    ) private view {
+        FusionClaim memory claimMessage = abi.decode(message.data, (FusionClaim));
+        Pool memory pool = pools[claimMessage.poolId];
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
         if (!pool.withdrawalsEnabled) {
             revert WithdrawalsDisabled();
         }
-        if (amount < pool.minWithdrawal) {
+        if (claimMessage.amount < pool.minWithdrawal) {
             revert InvalidAmount();
         }
-        FusionUnbond memory unbondMessage = FusionUnbond({poolId: poolId, amount: amount});
-        FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
-        bytes[] memory data = new bytes[](1);
-        messageTypes[0] = FusionMessageTypes.Unbond;
-        data[0] = abi.encode(unbondMessage);
-        bridge.sendMessage{value: msg.value}(
-            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
-        );
-
-        emit Unbonded(poolId, msg.sender, amount);
     }
 
-    function withdraw(bytes32 poolId, uint256 amount) external payable whenNotPaused {
-        Pool memory pool = pools[poolId];
+    function _boost(
+        FusionMessage memory message
+    ) private view {
+        FusionBoost memory boostMessage = abi.decode(message.data, (FusionBoost));
+        Pool memory pool = pools[boostMessage.poolId];
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        if (!pool.withdrawalsEnabled) {
-            revert WithdrawalsDisabled();
-        }
-        if (amount < pool.minWithdrawal) {
+        if (boostMessage.amount == 0) {
             revert InvalidAmount();
         }
-        FusionWithdraw memory withdrawMessage = FusionWithdraw({poolId: poolId, amount: amount});
-        FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
-        bytes[] memory data = new bytes[](1);
-        messageTypes[0] = FusionMessageTypes.Withdraw;
-        data[0] = abi.encode(withdrawMessage);
-        bridge.sendMessage(
-            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
-        );
-
-        emit Withdrawn(poolId, msg.sender, amount);
     }
 
-    function claim(bytes32 poolId, uint256 amount) external payable whenNotPaused {
-        Pool memory pool = pools[poolId];
+    function _setCompounding(
+        FusionMessage memory message
+    ) private view {
+        FusionSetCompounding memory setCompoundingMessage = abi.decode(message.data, (FusionSetCompounding));
+        Pool memory pool = pools[setCompoundingMessage.poolId];
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        FusionClaim memory claimMessage = FusionClaim({poolId: poolId, amount: amount});
-        FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
-        bytes[] memory data = new bytes[](1);
-        messageTypes[0] = FusionMessageTypes.Claim;
-        data[0] = abi.encode(claimMessage);
-        bridge.sendMessage{value: msg.value}(
-            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
-        );
-
-        emit Claimed(poolId, msg.sender, amount);
     }
 
-    function setCompounding(bytes32 poolId, bool toCompound) external payable whenNotPaused {
-        Pool memory pool = pools[poolId];
-        if (address(pool.token) == address(0)) {
-            revert InvalidPoolId();
-        }
-        FusionSetCompounding memory compoundMessage = FusionSetCompounding({poolId: poolId, toCompound: toCompound});
-        FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
-        bytes[] memory data = new bytes[](1);
-        messageTypes[0] = FusionMessageTypes.SetCompounding;
-        data[0] = abi.encode(compoundMessage);
-        bridge.sendMessage{value: msg.value}(
-            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
-        );
-
-        emit CompoundingSet(poolId, msg.sender, toCompound);
-    }
-
-    function setController(bytes32 poolId, bytes32 controller) external payable whenNotPaused {
-        if (controller == bytes32(0)) {
+    function _setController(
+        FusionMessage memory message
+    ) private pure {
+        FusionSetController memory setControllerMessage = abi.decode(message.data, (FusionSetController));
+        if (setControllerMessage.controller == bytes32(0)) {
             revert InvalidController();
         }
-        Pool memory pool = pools[poolId];
-        if (address(pool.token) == address(0)) {
-            revert InvalidPoolId();
-        }
-        FusionSetController memory controllerMessage = FusionSetController({controller: controller});
-        FusionMessageTypes[] memory messageTypes = new FusionMessageTypes[](1);
-        bytes[] memory data = new bytes[](1);
-        messageTypes[0] = FusionMessageTypes.SetController;
-        data[0] = abi.encode(controllerMessage);
-        bridge.sendMessage{value: msg.value}(
-            fusion, abi.encode(FusionMessage({account: msg.sender, messageType: messageTypes, data: data}))
-        );
-
-        emit ControllerSet(poolId, msg.sender, controller);
     }
 
     function _onAvailMessage(bytes32 from, bytes calldata data) internal override whenNotPaused {
         if (from != fusion) {
             revert OnlyFusionPallet();
         }
-        FusionMessage memory message = abi.decode(data, (FusionMessage));
+        FusionMessageBundle memory bundle = abi.decode(data, (FusionMessageBundle));
+        FusionMessage memory message = bundle.messages[0];
         if (
-            message.messageType.length != 1 || message.messageType.length != message.data.length
-                || message.messageType[0] != FusionMessageTypes.Unstake
+            message.messageType != FusionMessageType.Unstake
         ) {
             revert InvalidMessage();
         }
-        FusionUnstake memory unstakeMessage = abi.decode(message.data[0], (FusionUnstake));
+        FusionUnstake memory unstakeMessage = abi.decode(message.data, (FusionUnstake));
         Pool memory pool = pools[unstakeMessage.poolId];
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        uint256 amount = stakes[unstakeMessage.poolId][message.account];
-        if (amount < unstakeMessage.amount) {
-            revert InvalidAmount();
-        }
-        stakes[unstakeMessage.poolId][message.account] -= unstakeMessage.amount;
-        pool.token.safeTransfer(message.account, unstakeMessage.amount);
+        balances[address(pool.token)] -= unstakeMessage.amount;
+        pool.token.safeTransfer(bundle.account, unstakeMessage.amount);
 
-        emit Unstaked(unstakeMessage.poolId, message.account, unstakeMessage.amount);
+        emit Unstaked(unstakeMessage.poolId, bundle.account, unstakeMessage.amount);
     }
 }
