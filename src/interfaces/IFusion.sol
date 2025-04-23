@@ -32,6 +32,8 @@ interface IFusion {
         Stake,
         /// @dev Unbond assets on Avail
         Unbond,
+        /// @dev Pull assets from the pool to Fusion balance
+        Pull,
         /// @dev Withdraw assets from Avail to Ethereum
         Withdraw,
         /// @dev Withdraw assets on Avail and send it to the controller
@@ -55,6 +57,10 @@ interface IFusion {
         uint256 minStakingAmount;
         /// @dev Minimum amount for each unbonding action
         uint256 minUnbondingAmount;
+        /// @dev Minimum amount for each pull action
+        uint256 minPullAmount;
+        /// @dev Minimum amount for each extraction action
+        uint256 minExtractionAmount;
         /// @dev If the pool stakings are enabled
         bool stakingEnabled;
         /// @dev If the pool unbondings are enabled
@@ -73,21 +79,21 @@ interface IFusion {
         /// @dev If the asset withdrawals are enabled
         bool withdrawalsEnabled;
     }
-
+    /// @dev The Fusion message bundle is sent to the Fusion pallet
     struct FusionMessageBundle {
         /// @dev The account on Ethereum that is sending the bundle
         address account;
         /// @dev The payload is encoded as an array of wrapped messages
         FusionMessage[] messages;
     }
-
+    /// @dev A message that is sent to the Fusion pallet
     struct FusionMessage {
         /// @dev The message type
         FusionMessageType messageType;
         /// @dev The payload
         bytes data;
     }
-
+    /// @dev Initiates a deposit to Avail as Fusion balance
     struct FusionDeposit {
         /// @dev The token being deposited
         IERC20 token;
@@ -95,7 +101,7 @@ interface IFusion {
         uint256 amount;
     }
 
-    /// @dev Initiates a deposit to Avail and stake into the pool
+    /// @dev Initiates a stake from Fusion balance
     struct FusionStake {
         /// @dev The pool ID
         bytes32 poolId;
@@ -111,6 +117,14 @@ interface IFusion {
         uint256 amount;
     }
 
+    /// @dev Initiates a pull from the pool, this action converts unbonded balance into Fusion balance
+    struct FusionPull {
+        /// @dev The pool ID
+        bytes32 poolId;
+        /// @dev The amount to pull (in wei)
+        uint256 amount;
+    }
+
     /// @dev Initiates a withdrawal from the Fusion balance to Ethereum
     struct FusionWithdraw {
         /// @dev Token address
@@ -119,7 +133,8 @@ interface IFusion {
         uint256 amount;
     }
 
-    /// @dev Initiates a withdrawal from the pool to the controller
+    /// @dev Initiates a withdrawal from the pool to the controller, this action converts unbonded balance into
+    /// Fusion balance for the controller
     struct FusionExtract {
         /// @dev The pool ID
         bytes32 poolId;
@@ -127,7 +142,7 @@ interface IFusion {
         uint256 amount;
     }
 
-    /// @dev Initiates a claim from the pool rewards
+    /// @dev Initiates a claim from the pool rewards, this action takes rewards and stores them in the Fusion balance
     struct FusionClaim {
         /// @dev The pool ID
         bytes32 poolId;
@@ -159,7 +174,7 @@ interface IFusion {
         bool toCompound;
     }
 
-    /// @dev Sets the controller for an account
+    /// @dev Sets the controller for an account, this action allows the specified controller to manage the position
     struct FusionSetController {
         /// @dev A controller on Avail who can manage the position
         bytes32 controller;
