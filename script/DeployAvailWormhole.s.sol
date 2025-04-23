@@ -12,7 +12,7 @@ contract Deploy is Script {
         address admin = vm.envAddress("ADMIN");
         address impl = address(new AvailWormhole());
         AvailWormhole avail = AvailWormhole(address(new TransparentUpgradeableProxy(impl, admin, "")));
-        avail.initialize();
+        avail.initialize(admin);
         vm.stopBroadcast();
     }
 }

@@ -5,8 +5,8 @@ import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contra
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {MulticallUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/MulticallUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuardTransientUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardTransientUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {MessageReceiver} from "./MessageReceiver.sol";
@@ -17,13 +17,14 @@ contract Fusion is
     PausableUpgradeable,
     AccessControlDefaultAdminRulesUpgradeable,
     MulticallUpgradeable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuardTransientUpgradeable,
     MessageReceiver,
     IFusion
 {
     using SafeERC20 for IERC20;
 
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    uint256 private constant MAX_BUNDLE_SIZE = 50;
     IAvailBridge public bridge;
     /// @dev Pot address of pallet used to receive and send assets
     bytes32 public fusion;
@@ -49,6 +50,7 @@ contract Fusion is
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
         __Pausable_init();
+        //__ReentrancyGuardTransientUpgradeable_init();
     }
 
     /**
@@ -126,6 +128,7 @@ contract Fusion is
      */
     function execute(FusionMessage[] calldata messages) external payable whenNotPaused nonReentrant {
         uint256 length = messages.length;
+        require(length > 0 && length <= MAX_BUNDLE_SIZE, "Invalid bundle size");
         for (uint256 i = 0; i < length;) {
             FusionMessage memory message = messages[i];
             if (message.messageType == FusionMessageType.Deposit) {
@@ -178,7 +181,7 @@ contract Fusion is
         depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
     }
 
-    function _stake(FusionMessage memory message) private {
+    function _stake(FusionMessage memory message) private view {
         FusionStake memory stakeMessage = abi.decode(message.data, (FusionStake));
         Pool memory pool = pools[stakeMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -245,12 +248,6 @@ contract Fusion is
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        if (!pool.withdrawalsEnabled) {
-            revert WithdrawalsDisabled();
-        }
-        if (claimMessage.amount < pool.minWithdrawal) {
-            revert InvalidAmount();
-        }
     }
 
     function _boost(FusionMessage memory message) private view {
@@ -284,6 +281,9 @@ contract Fusion is
             revert OnlyFusionPallet();
         }
         FusionMessageBundle memory bundle = abi.decode(data, (FusionMessageBundle));
+        if (bundle.messages.length != 1) {
+            revert InvalidBundleSize();
+        }
         FusionMessage memory message = bundle.messages[0];
         if (message.messageType != FusionMessageType.Unstake) {
             revert InvalidMessage();
@@ -293,7 +293,7 @@ contract Fusion is
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
-        balances[address(pool.token)] -= unstakeMessage.amount;
+        balances[pool.token] -= unstakeMessage.amount;
         pool.token.safeTransfer(bundle.account, unstakeMessage.amount);
 
         emit Unstaked(unstakeMessage.poolId, bundle.account, unstakeMessage.amount);
