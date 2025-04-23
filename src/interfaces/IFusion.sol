@@ -10,6 +10,7 @@ interface IFusion {
     error WithdrawalsDisabled();
     error InvalidAmount();
     error InvalidAsset();
+    error InvalidBundleSize();
     error InvalidController();
     error InvalidMessage();
     error InvalidPoolId();
@@ -21,7 +22,7 @@ interface IFusion {
     event Unstaked(bytes32 indexed poolId, address indexed account, uint256 amount);
     event Unbonded(bytes32 indexed poolId, address indexed account, uint256 amount);
     event Withdrawn(bytes32 indexed poolId, address indexed account, uint256 amount);
-    event Claimed(bytes32 indexed poolId, address indexed account, uint256 amount);
+    event Claimed(bytes32 indexed poolId, address indexed account);
     event CompoundingSet(bytes32 indexed poolId, address indexed account, bool toCompound);
     event ControllerSet(bytes32 indexed poolId, address indexed account, bytes32 controller);
 
@@ -149,18 +150,7 @@ interface IFusion {
     struct FusionClaim {
         /// @dev The pool ID
         bytes32 poolId;
-        /// @dev The amount to claim from rewards (in wei)
-        uint256 amount;
     }
-
-    /// @dev Returns an amount of locked stake to the user
-    struct FusionUnstake {
-        /// @dev The pool ID
-        bytes32 poolId;
-        /// @dev The amount to remove from the pool (in wei)
-        uint256 amount;
-    }
-
     /// @dev Sets a boost allocation for the pool
     struct FusionBoost {
         /// @dev The pool ID
@@ -181,5 +171,13 @@ interface IFusion {
     struct FusionSetController {
         /// @dev A controller on Avail who can manage the position
         bytes32 controller;
+    }
+
+    /// @dev Returns an amount of locked stake to the user, not callable by the user
+    struct FusionUnstake {
+        /// @dev The pool ID
+        bytes32 poolId;
+        /// @dev The amount to remove from the pool (in wei)
+        uint256 amount;
     }
 }
