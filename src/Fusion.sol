@@ -129,33 +129,47 @@ contract Fusion is
         require(length > 0 && length <= MAX_BUNDLE_SIZE, "Invalid bundle size");
         for (uint256 i = 0; i < length;) {
             FusionMessage memory message = messages[i];
-            if (message.messageType < FusionMessageType.Withdraw) { // Enum idx 0-3
-                if (message.messageType == FusionMessageType.Deposit) { // Idx = 0
-                _deposit(message); 
-                } else if (message.messageType == FusionMessageType.Stake) { // Idx = 1
+            if (message.messageType < FusionMessageType.Withdraw) {
+                // Enum idx 0-3
+                if (message.messageType == FusionMessageType.Deposit) {
+                    // Idx = 0
+                    _deposit(message);
+                } else if (message.messageType == FusionMessageType.Stake) {
+                    // Idx = 1
                     _stake(message);
-                } else if (message.messageType == FusionMessageType.Unbond) { // Idx = 2
+                } else if (message.messageType == FusionMessageType.Unbond) {
+                    // Idx = 2
                     _unbond(message);
-                } else { // Idx = 3
+                } else {
+                    // Idx = 3
                     _pull(message);
                 }
-            } else if (message.messageType < FusionMessageType.Boost) { // Enum idx 4-6
-                if (message.messageType == FusionMessageType.Withdraw) { // Idx = 4
+            } else if (message.messageType < FusionMessageType.Boost) {
+                // Enum idx 4-6
+                if (message.messageType == FusionMessageType.Withdraw) {
+                    // Idx = 4
                     _withdraw(message);
-                } else if (message.messageType == FusionMessageType.Claim) { // Idx = 5
+                } else if (message.messageType == FusionMessageType.Claim) {
+                    // Idx = 5
                     _claim(message);
-                } else { // Idx = 6
+                } else {
+                    // Idx = 6
                     _extract(message);
                 }
-            } else if (message.messageType < FusionMessageType.Unstake) { // Enum idx 7-9
-                if (message.messageType == FusionMessageType.Boost) { // Idx = 7
+            } else if (message.messageType < FusionMessageType.Unstake) {
+                // Enum idx 7-9
+                if (message.messageType == FusionMessageType.Boost) {
+                    // Idx = 7
                     _boost(message);
-                } else if (message.messageType == FusionMessageType.SetCompounding) { // Idx = 8
+                } else if (message.messageType == FusionMessageType.SetCompounding) {
+                    // Idx = 8
                     _setCompounding(message);
-                } else { // Idx = 9
+                } else {
+                    // Idx = 9
                     _setController(message);
                 }
-            } else { // Idx >= 10
+            } else {
+                // Idx >= 10
                 assert(false); // unreachable
             }
             unchecked {
@@ -166,10 +180,7 @@ contract Fusion is
             fusion, abi.encode(FusionMessageBundle({account: msg.sender, messages: messages}))
         );
 
-        emit Executed(
-            msg.sender,
-            length
-        );
+        emit Executed(msg.sender, length);
     }
 
     function _deposit(FusionMessage memory message) private {
@@ -189,11 +200,7 @@ contract Fusion is
         balances[depositMessage.token] = newBalance;
         depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
 
-        emit Deposited(
-            depositMessage.token,
-            msg.sender,
-            depositMessage.amount
-        );
+        emit Deposited(depositMessage.token, msg.sender, depositMessage.amount);
     }
 
     function _stake(FusionMessage memory message) private {
@@ -209,11 +216,7 @@ contract Fusion is
             revert InvalidAmount();
         }
 
-        emit StakeIntention(
-            stakeMessage.poolId,
-            msg.sender,
-            stakeMessage.amount
-        );
+        emit StakeIntention(stakeMessage.poolId, msg.sender, stakeMessage.amount);
     }
 
     function _unbond(FusionMessage memory message) private {
@@ -229,11 +232,7 @@ contract Fusion is
             revert InvalidAmount();
         }
 
-        emit UnbondIntention(
-            unbondMessage.poolId,
-            msg.sender,
-            unbondMessage.amount
-        );
+        emit UnbondIntention(unbondMessage.poolId, msg.sender, unbondMessage.amount);
     }
 
     function _pull(FusionMessage memory message) private {
@@ -246,11 +245,7 @@ contract Fusion is
             revert InvalidAmount();
         }
 
-        emit PullIntention(
-            pullMessage.poolId,
-            msg.sender,
-            pullMessage.amount
-        );
+        emit PullIntention(pullMessage.poolId, msg.sender, pullMessage.amount);
     }
 
     function _withdraw(FusionMessage memory message) private {
@@ -263,11 +258,7 @@ contract Fusion is
             revert InvalidAmount();
         }
 
-        emit WithdrawIntention(
-            withdrawMessage.token,
-            msg.sender,
-            withdrawMessage.amount
-        );
+        emit WithdrawIntention(withdrawMessage.token, msg.sender, withdrawMessage.amount);
     }
 
     function _extract(FusionMessage memory message) private {
@@ -280,11 +271,7 @@ contract Fusion is
             revert InvalidAmount();
         }
 
-        emit ExtractIntention(
-            extractMessage.poolId,
-            msg.sender,
-            extractMessage.amount
-        );
+        emit ExtractIntention(extractMessage.poolId, msg.sender, extractMessage.amount);
     }
 
     function _claim(FusionMessage memory message) private {
@@ -294,10 +281,7 @@ contract Fusion is
             revert InvalidPoolId();
         }
 
-        emit ClaimIntention(
-            claimMessage.poolId,
-            msg.sender
-        );
+        emit ClaimIntention(claimMessage.poolId, msg.sender);
     }
 
     function _boost(FusionMessage memory message) private {
@@ -310,11 +294,7 @@ contract Fusion is
             revert InvalidAmount();
         }
 
-        emit BoostIntention(
-            boostMessage.poolId,
-            msg.sender,
-            boostMessage.amount
-        );
+        emit BoostIntention(boostMessage.poolId, msg.sender, boostMessage.amount);
     }
 
     function _setCompounding(FusionMessage memory message) private {
@@ -324,11 +304,7 @@ contract Fusion is
             revert InvalidPoolId();
         }
 
-        emit SetCompoundingIntention(
-            setCompoundingMessage.poolId,
-            msg.sender,
-            setCompoundingMessage.toCompound
-        );
+        emit SetCompoundingIntention(setCompoundingMessage.poolId, msg.sender, setCompoundingMessage.toCompound);
     }
 
     function _setController(FusionMessage memory message) private {
@@ -337,10 +313,7 @@ contract Fusion is
             revert InvalidController();
         }
 
-        emit SetControllerIntention(
-            msg.sender,
-            setControllerMessage.controller
-        );
+        emit SetControllerIntention(msg.sender, setControllerMessage.controller);
     }
 
     function _onAvailMessage(bytes32 from, bytes calldata data) internal override whenNotPaused {
