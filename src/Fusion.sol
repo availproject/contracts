@@ -49,8 +49,6 @@ contract Fusion is
         __MessageReceiver_init(address(newBridge));
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
-        __Pausable_init();
-        //__ReentrancyGuardTransientUpgradeable_init();
     }
 
     /**
@@ -131,27 +129,33 @@ contract Fusion is
         require(length > 0 && length <= MAX_BUNDLE_SIZE, "Invalid bundle size");
         for (uint256 i = 0; i < length;) {
             FusionMessage memory message = messages[i];
-            if (message.messageType == FusionMessageType.Deposit) {
-                _deposit(message);
-            } else if (message.messageType == FusionMessageType.Stake) {
-                _stake(message);
-            } else if (message.messageType == FusionMessageType.Unbond) {
-                _unbond(message);
-            } else if (message.messageType == FusionMessageType.Pull) {
-                _pull(message);
-            } else if (message.messageType == FusionMessageType.Withdraw) {
-                _withdraw(message);
-            } else if (message.messageType == FusionMessageType.Extract) {
-                _extract(message);
-            } else if (message.messageType == FusionMessageType.Claim) {
-                _claim(message);
-            } else if (message.messageType == FusionMessageType.Boost) {
-                _boost(message);
-            } else if (message.messageType == FusionMessageType.SetCompounding) {
-                _setCompounding(message);
-            } else if (message.messageType == FusionMessageType.SetController) {
-                _setController(message);
-            } else {
+            if (message.messageType < FusionMessageType.Withdraw) { // Enum idx 0-3
+                if (message.messageType == FusionMessageType.Deposit) { // Idx = 0
+                _deposit(message); 
+                } else if (message.messageType == FusionMessageType.Stake) { // Idx = 1
+                    _stake(message);
+                } else if (message.messageType == FusionMessageType.Unbond) { // Idx = 2
+                    _unbond(message);
+                } else { // Idx = 3
+                    _pull(message);
+                }
+            } else if (message.messageType < FusionMessageType.Boost) { // Enum idx 4-6
+                if (message.messageType == FusionMessageType.Withdraw) { // Idx = 4
+                    _withdraw(message);
+                } else if (message.messageType == FusionMessageType.Claim) { // Idx = 5
+                    _claim(message);
+                } else { // Idx = 6
+                    _extract(message);
+                }
+            } else if (message.messageType < FusionMessageType.Unstake) { // Enum idx 7-9
+                if (message.messageType == FusionMessageType.Boost) { // Idx = 7
+                    _boost(message);
+                } else if (message.messageType == FusionMessageType.SetCompounding) { // Idx = 8
+                    _setCompounding(message);
+                } else { // Idx = 9
+                    _setController(message);
+                }
+            } else { // Idx >= 10
                 assert(false); // unreachable
             }
             unchecked {
@@ -160,6 +164,11 @@ contract Fusion is
         }
         bridge.sendMessage{value: msg.value}(
             fusion, abi.encode(FusionMessageBundle({account: msg.sender, messages: messages}))
+        );
+
+        emit Executed(
+            msg.sender,
+            length
         );
     }
 
@@ -179,9 +188,15 @@ contract Fusion is
         }
         balances[depositMessage.token] = newBalance;
         depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
+
+        emit Deposited(
+            depositMessage.token,
+            msg.sender,
+            depositMessage.amount
+        );
     }
 
-    function _stake(FusionMessage memory message) private view {
+    function _stake(FusionMessage memory message) private {
         FusionStake memory stakeMessage = abi.decode(message.data, (FusionStake));
         Pool memory pool = pools[stakeMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -193,9 +208,15 @@ contract Fusion is
         if (stakeMessage.amount < pool.minStakingAmount) {
             revert InvalidAmount();
         }
+
+        emit StakeIntention(
+            stakeMessage.poolId,
+            msg.sender,
+            stakeMessage.amount
+        );
     }
 
-    function _unbond(FusionMessage memory message) private view {
+    function _unbond(FusionMessage memory message) private {
         FusionUnbond memory unbondMessage = abi.decode(message.data, (FusionUnbond));
         Pool memory pool = pools[unbondMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -207,9 +228,15 @@ contract Fusion is
         if (unbondMessage.amount < pool.minUnbondingAmount) {
             revert InvalidAmount();
         }
+
+        emit UnbondIntention(
+            unbondMessage.poolId,
+            msg.sender,
+            unbondMessage.amount
+        );
     }
 
-    function _pull(FusionMessage memory message) private view {
+    function _pull(FusionMessage memory message) private {
         FusionPull memory pullMessage = abi.decode(message.data, (FusionPull));
         Pool memory pool = pools[pullMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -218,9 +245,15 @@ contract Fusion is
         if (pullMessage.amount < pool.minPullAmount) {
             revert InvalidAmount();
         }
+
+        emit PullIntention(
+            pullMessage.poolId,
+            msg.sender,
+            pullMessage.amount
+        );
     }
 
-    function _withdraw(FusionMessage memory message) private view {
+    function _withdraw(FusionMessage memory message) private {
         FusionWithdraw memory withdrawMessage = abi.decode(message.data, (FusionWithdraw));
         Asset memory asset = assets[withdrawMessage.token];
         if (!asset.withdrawalsEnabled) {
@@ -229,9 +262,15 @@ contract Fusion is
         if (withdrawMessage.amount < asset.minWithdrawalAmount) {
             revert InvalidAmount();
         }
+
+        emit WithdrawIntention(
+            withdrawMessage.token,
+            msg.sender,
+            withdrawMessage.amount
+        );
     }
 
-    function _extract(FusionMessage memory message) private view {
+    function _extract(FusionMessage memory message) private {
         FusionExtract memory extractMessage = abi.decode(message.data, (FusionExtract));
         Pool memory pool = pools[extractMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -240,17 +279,28 @@ contract Fusion is
         if (extractMessage.amount < pool.minExtractionAmount) {
             revert InvalidAmount();
         }
+
+        emit ExtractIntention(
+            extractMessage.poolId,
+            msg.sender,
+            extractMessage.amount
+        );
     }
 
-    function _claim(FusionMessage memory message) private view {
+    function _claim(FusionMessage memory message) private {
         FusionClaim memory claimMessage = abi.decode(message.data, (FusionClaim));
         Pool memory pool = pools[claimMessage.poolId];
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
+
+        emit ClaimIntention(
+            claimMessage.poolId,
+            msg.sender
+        );
     }
 
-    function _boost(FusionMessage memory message) private view {
+    function _boost(FusionMessage memory message) private {
         FusionBoost memory boostMessage = abi.decode(message.data, (FusionBoost));
         Pool memory pool = pools[boostMessage.poolId];
         if (address(pool.token) == address(0)) {
@@ -259,21 +309,38 @@ contract Fusion is
         if (boostMessage.amount == 0) {
             revert InvalidAmount();
         }
+
+        emit BoostIntention(
+            boostMessage.poolId,
+            msg.sender,
+            boostMessage.amount
+        );
     }
 
-    function _setCompounding(FusionMessage memory message) private view {
+    function _setCompounding(FusionMessage memory message) private {
         FusionSetCompounding memory setCompoundingMessage = abi.decode(message.data, (FusionSetCompounding));
         Pool memory pool = pools[setCompoundingMessage.poolId];
         if (address(pool.token) == address(0)) {
             revert InvalidPoolId();
         }
+
+        emit SetCompoundingIntention(
+            setCompoundingMessage.poolId,
+            msg.sender,
+            setCompoundingMessage.toCompound
+        );
     }
 
-    function _setController(FusionMessage memory message) private pure {
+    function _setController(FusionMessage memory message) private {
         FusionSetController memory setControllerMessage = abi.decode(message.data, (FusionSetController));
         if (setControllerMessage.controller == bytes32(0)) {
             revert InvalidController();
         }
+
+        emit SetControllerIntention(
+            msg.sender,
+            setControllerMessage.controller
+        );
     }
 
     function _onAvailMessage(bytes32 from, bytes calldata data) internal override whenNotPaused {
@@ -289,13 +356,13 @@ contract Fusion is
             revert InvalidMessage();
         }
         FusionUnstake memory unstakeMessage = abi.decode(message.data, (FusionUnstake));
-        Pool memory pool = pools[unstakeMessage.poolId];
-        if (address(pool.token) == address(0)) {
-            revert InvalidPoolId();
+        Asset memory asset = assets[unstakeMessage.token];
+        if (!asset.withdrawalsEnabled) {
+            revert WithdrawalsDisabled();
         }
-        balances[pool.token] -= unstakeMessage.amount;
-        pool.token.safeTransfer(bundle.account, unstakeMessage.amount);
+        balances[unstakeMessage.token] -= unstakeMessage.amount;
+        unstakeMessage.token.safeTransfer(bundle.account, unstakeMessage.amount);
 
-        emit Unstaked(unstakeMessage.poolId, bundle.account, unstakeMessage.amount);
+        emit Withdrawn(unstakeMessage.token, bundle.account, unstakeMessage.amount);
     }
 }

@@ -18,14 +18,22 @@ interface IFusion {
     error StakingDisabled();
     error UnbondingDisabled();
 
-    event Staked(bytes32 indexed poolId, address indexed account, uint256 amount);
-    event Unstaked(bytes32 indexed poolId, address indexed account, uint256 amount);
-    event Unbonded(bytes32 indexed poolId, address indexed account, uint256 amount);
-    event Withdrawn(bytes32 indexed poolId, address indexed account, uint256 amount);
-    event Claimed(bytes32 indexed poolId, address indexed account);
-    event CompoundingSet(bytes32 indexed poolId, address indexed account, bool toCompound);
-    event ControllerSet(bytes32 indexed poolId, address indexed account, bytes32 controller);
+    /// @dev All events except asset withdrawals and deposits are intentions because the corresponding action is
+    /// fully asynchronous and may fail
+    event Executed(address indexed account, uint256 bundleSize);
+    event Deposited(IERC20 indexed token, address indexed account, uint256 amount);
+    event StakeIntention(bytes32 indexed poolId, address indexed account, uint256 amount);
+    event UnbondIntention(bytes32 indexed poolId, address indexed account, uint256 amount);
+    event PullIntention(bytes32 indexed poolId, address indexed account, uint256 amount);
+    event WithdrawIntention(IERC20 indexed token, address indexed account, uint256 amount);
+    event ClaimIntention(bytes32 indexed poolId, address indexed account);
+    event ExtractIntention(bytes32 indexed poolId, address indexed account, uint256 amount);
+    event BoostIntention(bytes32 indexed poolId, address indexed account, uint256 amount);
+    event SetCompoundingIntention(bytes32 indexed poolId, address indexed account, bool toCompound);
+    event SetControllerIntention(address indexed account, bytes32 controller);
+    event Withdrawn(IERC20 indexed token, address indexed account, uint256 amount);
 
+    /// @dev Enum is ordered based on most likeliest to least likeliest actions
     enum FusionMessageType {
         /// @dev Deposit assets from Ethereum to Avail
         Deposit,
@@ -37,17 +45,17 @@ interface IFusion {
         Pull,
         /// @dev Withdraw assets from Avail to Ethereum
         Withdraw,
-        /// @dev Withdraw assets on Avail and send it to the controller
-        Extract,
         /// @dev Claim rewards on Avail and send it to the controller
         Claim,
+        /// @dev Withdraw assets on Avail and send it to the controller
+        Extract,
         /// @dev Sets a boost allocation for the pool
         Boost,
         /// @dev Sets the compounding status for the pool
         SetCompounding,
         /// @dev Sets the controller for the pool
         SetController,
-        /// @dev Unstake assets from Avail to Ethereum (not externally callable)
+        /// @dev Claims withdrawn assets assets from Avail to Ethereum (not externally callable)
         Unstake
     }
 
@@ -69,7 +77,7 @@ interface IFusion {
     }
 
     struct Asset {
-        /// @dev The limit of the asset
+        /// @dev The global limit of the asset
         uint256 limit;
         /// @dev Minimum amount for each deposit action
         uint256 minDepositAmount;
@@ -81,7 +89,6 @@ interface IFusion {
         bool withdrawalsEnabled;
     }
     /// @dev The Fusion message bundle is sent to the Fusion pallet
-
     struct FusionMessageBundle {
         /// @dev The account on Ethereum that is sending the bundle
         address account;
@@ -173,10 +180,10 @@ interface IFusion {
         bytes32 controller;
     }
 
-    /// @dev Returns an amount of locked stake to the user, not callable by the user
+    /// @dev Returns an amount of deposited funds to the user, not callable by the user
     struct FusionUnstake {
-        /// @dev The pool ID
-        bytes32 poolId;
+        /// @dev The token address
+        IERC20 token;
         /// @dev The amount to remove from the pool (in wei)
         uint256 amount;
     }
