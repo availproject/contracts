@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.29;
 
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
-import {MulticallUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/MulticallUpgradeable.sol";
 import {ReentrancyGuardTransientUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardTransientUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,10 +13,16 @@ import {MessageReceiver} from "./MessageReceiver.sol";
 import {IAvailBridge} from "./interfaces/IAvailBridge.sol";
 import {IFusion} from "./interfaces/IFusion.sol";
 
+/**
+ * @author  @QEDK (Avail)
+ * @title   Fusion
+ * @notice  A staking contract leveraging the Avail AMB to send to the Fusion pallet
+ * @custom:security security@availproject.org
+ */
 contract Fusion is
+    Initializable,
     PausableUpgradeable,
     AccessControlDefaultAdminRulesUpgradeable,
-    MulticallUpgradeable,
     ReentrancyGuardTransientUpgradeable,
     MessageReceiver,
     IFusion
@@ -124,9 +130,13 @@ contract Fusion is
      * @dev     We use nonReentrant here because we break the CEI pattern
      * @param   messages  Fusion messages to be sent as a bundle
      */
+    // slither-disable-next-line cyclomatic-complexity function has a complexity of 12, just over the limit of 11
     function execute(FusionMessage[] calldata messages) external payable whenNotPaused nonReentrant {
         uint256 length = messages.length;
         require(length > 0 && length <= MAX_BUNDLE_SIZE, "Invalid bundle size");
+
+        emit Executed(msg.sender, length);
+
         for (uint256 i = 0; i < length;) {
             FusionMessage memory message = messages[i];
             if (message.messageType < FusionMessageType.Withdraw) {
@@ -170,17 +180,16 @@ contract Fusion is
                 }
             } else {
                 // Idx >= 10
-                assert(false); // unreachable
+                revert InvalidMessage();
             }
             unchecked {
                 ++i;
             }
         }
+
         bridge.sendMessage{value: msg.value}(
             fusion, abi.encode(FusionMessageBundle({account: msg.sender, messages: messages}))
         );
-
-        emit Executed(msg.sender, length);
     }
 
     function _deposit(FusionMessage memory message) private {
@@ -198,9 +207,10 @@ contract Fusion is
             revert InvalidAmount();
         }
         balances[depositMessage.token] = newBalance;
-        depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
 
         emit Deposited(depositMessage.token, msg.sender, depositMessage.amount);
+
+        depositMessage.token.safeTransferFrom(msg.sender, address(this), depositMessage.amount);
     }
 
     function _stake(FusionMessage memory message) private {
@@ -316,7 +326,7 @@ contract Fusion is
         emit SetControllerIntention(msg.sender, setControllerMessage.controller);
     }
 
-    function _onAvailMessage(bytes32 from, bytes calldata data) internal override whenNotPaused {
+    function _onAvailMessage(bytes32 from, bytes calldata data) internal override whenNotPaused nonReentrant {
         if (from != fusion) {
             revert OnlyFusionPallet();
         }
@@ -334,8 +344,9 @@ contract Fusion is
             revert WithdrawalsDisabled();
         }
         balances[unstakeMessage.token] -= unstakeMessage.amount;
-        unstakeMessage.token.safeTransfer(bundle.account, unstakeMessage.amount);
 
         emit Withdrawn(unstakeMessage.token, bundle.account, unstakeMessage.amount);
+
+        unstakeMessage.token.safeTransfer(bundle.account, unstakeMessage.amount);
     }
 }
