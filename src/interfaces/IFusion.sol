@@ -89,6 +89,7 @@ interface IFusion {
         bool withdrawalsEnabled;
     }
     /// @dev The Fusion message bundle is sent to the Fusion pallet
+
     struct FusionMessageBundle {
         /// @dev The account on Ethereum that is sending the bundle
         address account;
@@ -159,6 +160,7 @@ interface IFusion {
         bytes32 poolId;
     }
     /// @dev Sets a boost allocation for the pool
+
     struct FusionBoost {
         /// @dev The pool ID
         bytes32 poolId;
