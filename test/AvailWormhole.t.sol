@@ -36,7 +36,7 @@ contract AvailWormholeTest is Test {
         assertNotEq(avail.name(), "");
         assertEq(avail.name(), "Avail (Wormhole)");
         assertNotEq(avail.symbol(), "");
-        assertEq(avail.symbol(), "AVAIL.W");
+        assertEq(avail.symbol(), "AVAIL");
     }
 
     function testRevertOnlyMinter_mint(address to, uint256 amount) external {
