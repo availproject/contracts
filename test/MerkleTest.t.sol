@@ -17,7 +17,7 @@ contract MerkleTest is Test, MurkyBase {
         return keccak256(abi.encode(left, right));
     }
 
-    function test_checkMembershipSingleLeaf(bytes32 leaf, bytes32 wrongRoot, uint256 index) external {
+    function test_checkMembershipSingleLeaf(bytes32 leaf, bytes32 wrongRoot, uint256 index) external view {
         vm.assume(index != 0 && wrongRoot != leaf);
         bytes32 randomDataHash = keccak256(abi.encode(leaf));
         bytes32[] memory proof = new bytes32[](0);
@@ -37,7 +37,7 @@ contract MerkleTest is Test, MurkyBase {
     }
 
     function test_checkMembership(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot)
-        external
+        external view
     {
         vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
@@ -68,7 +68,7 @@ contract MerkleTest is Test, MurkyBase {
         uint256 index,
         uint256 wrongIndex,
         bytes32 wrongRoot
-    ) external {
+    ) external view {
         vm.assume(leaves.length >= 128 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);
@@ -98,7 +98,7 @@ contract MerkleTest is Test, MurkyBase {
         uint256 index,
         uint256 wrongIndex,
         bytes32 wrongRoot
-    ) external {
+    ) external view {
         vm.assume(index < c_leaves.length && wrongIndex != index);
         bytes32[] memory leaves = new bytes32[](c_leaves.length);
         for (uint256 i = 0; i < c_leaves.length;) {

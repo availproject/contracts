@@ -41,7 +41,7 @@ contract Fusion is
     /// @dev Token address -> balance
     mapping(IERC20 => uint256) public balances;
 
-    constructor(IAvailBridge newBridge, IAvail newAvail, bytes32 newFusion) {
+    constructor(IAvailBridge newBridge, bytes32 newFusion) {
         bridge = newBridge;
         fusion = newFusion;
         _disableInitializers();
