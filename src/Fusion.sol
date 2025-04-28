@@ -11,7 +11,6 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {MessageReceiver} from "./MessageReceiver.sol";
 import {IAvailBridge} from "./interfaces/IAvailBridge.sol";
-import {IAvail} from "./interfaces/IAvail.sol";
 import {IFusion} from "./interfaces/IFusion.sol";
 
 /**
@@ -48,10 +47,7 @@ contract Fusion is
         _disableInitializers();
     }
 
-    function initialize(address governance, address pauser)
-        external
-        initializer
-    {
+    function initialize(address governance, address pauser) external initializer {
         __MessageReceiver_init(address(newBridge));
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
