@@ -11,6 +11,7 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {MessageReceiver} from "./MessageReceiver.sol";
 import {IAvailBridge} from "./interfaces/IAvailBridge.sol";
+import {IAvail} from "./interfaces/IAvail.sol";
 import {IFusion} from "./interfaces/IFusion.sol";
 
 /**
@@ -31,9 +32,8 @@ contract Fusion is
 
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 private constant MAX_BUNDLE_SIZE = 50;
-    IAvailBridge public bridge;
-    /// @dev Pot address of pallet used to receive and send assets
-    bytes32 public fusion;
+    IAvailBridge private immutable bridge;
+    bytes32 private immutable fusion;
 
     /// @dev Pool ID -> pool data
     mapping(bytes32 => Pool) public pools;
@@ -42,16 +42,16 @@ contract Fusion is
     /// @dev Token address -> balance
     mapping(IERC20 => uint256) public balances;
 
-    constructor() {
+    constructor(IAvailBridge newBridge, IAvail newAvail, bytes32 newFusion) {
+        bridge = newBridge;
+        fusion = newFusion;
         _disableInitializers();
     }
 
-    function initialize(IAvailBridge newBridge, bytes32 newFusion, address governance, address pauser)
+    function initialize(address governance, address pauser)
         external
         initializer
     {
-        bridge = newBridge;
-        fusion = newFusion;
         __MessageReceiver_init(address(newBridge));
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
@@ -67,24 +67,6 @@ contract Fusion is
         } else {
             _unpause();
         }
-    }
-
-    /**
-     * @notice  Function to update the fusion pot address
-     * @dev     Only callable by governance
-     * @param   newFusion  New fusion pot address
-     */
-    function updateFusion(bytes32 newFusion) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        fusion = newFusion;
-    }
-
-    /**
-     * @notice  Function to update the bridge contract address
-     * @dev     Only callable by governance
-     * @param   newBridge  New bridge contract address
-     */
-    function updateBridge(IAvailBridge newBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        bridge = newBridge;
     }
 
     /**

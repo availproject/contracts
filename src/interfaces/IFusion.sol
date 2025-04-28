@@ -109,6 +109,8 @@ interface IFusion {
     struct FusionDeposit {
         /// @dev The token being deposited
         IERC20 token;
+        /// @dev The recipient of the deposit
+        address recipient;
         /// @dev The amount to deposit (in wei)
         uint256 amount;
     }
