@@ -48,7 +48,7 @@ contract Fusion is
     }
 
     function initialize(address governance, address pauser) external initializer {
-        __MessageReceiver_init(address(newBridge));
+        __MessageReceiver_init(address(bridge));
         __AccessControlDefaultAdminRules_init(0, governance);
         _grantRole(PAUSER_ROLE, pauser);
     }
