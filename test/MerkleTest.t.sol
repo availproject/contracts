@@ -37,7 +37,8 @@ contract MerkleTest is Test, MurkyBase {
     }
 
     function test_checkMembership(bytes32[] memory leaves, uint256 index, uint256 wrongIndex, bytes32 wrongRoot)
-        external view
+        external
+        view
     {
         vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
         bytes32 root = getRoot(leaves);
