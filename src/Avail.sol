@@ -15,9 +15,17 @@ contract Avail is ERC20Permit, IAvail {
 
     error OnlyAvailBridge();
 
+    event TransferWithData(address indexed from, address indexed to, bytes32 indexed data, uint256 amount);
+
     constructor(address _bridge) ERC20Permit("Avail") ERC20("Avail", "AVAIL") {
         // slither-disable-next-line missing-zero-check
         bridge = _bridge;
+    }
+
+    function transferWithData(address to, uint256 amount, bytes32 data) external returns (bool) {
+        _transfer(msg.sender, to, amount);
+        emit TransferWithData(msg.sender, to, data, amount);
+        return true;
     }
 
     modifier onlyAvailBridge() {
