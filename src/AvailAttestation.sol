@@ -2,7 +2,8 @@
 pragma solidity ^0.8.29;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {Ownable2StepUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {Ownable2StepUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {Merkle} from "src/lib/Merkle.sol";
 import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {IAvailAttestation} from "src/interfaces/IAvailAttestation.sol";
@@ -13,11 +14,7 @@ import {IAvailAttestation} from "src/interfaces/IAvailAttestation.sol";
  * @notice  A data attestation-only bridge contract for Avail blobs
  * @custom:security security@availproject.org
  */
-contract AvailAttestation is
-    Initializable,
-    Ownable2StepUpgradeable,
-    IAvailAttestation
-{
+contract AvailAttestation is Initializable, Ownable2StepUpgradeable, IAvailAttestation {
     using Merkle for bytes32[];
 
     IVectorx public vectorx;
@@ -27,10 +24,7 @@ contract AvailAttestation is
      * @param   governance  Address of the governance multisig
      * @param   newVectorx  Address of the VectorX contract
      */
-    function initialize(
-        address governance,
-        IVectorx newVectorx
-    ) external initializer {
+    function initialize(address governance, IVectorx newVectorx) external initializer {
         vectorx = newVectorx;
         __Ownable_init(governance);
     }
