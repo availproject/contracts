@@ -33,12 +33,12 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         owner = msg.sender;
     }
 
-    function test_owner() external {
+    function test_owner() external view {
         assertNotEq(bridge.owner(), address(0));
         assertEq(bridge.owner(), owner);
     }
 
-    function test_feeRecipient() external {
+    function test_feeRecipient() external view {
         assertNotEq(bridge.feeRecipient(), address(0));
         assertEq(bridge.feeRecipient(), owner);
     }

@@ -17,4 +17,8 @@ mainnet = "https://ethereum-rpc.publicnode.com"
 base = "https://base-rpc.publicnode.com"
 sepolia = "https://ethereum-sepolia.publicnode.com"
 goerli = "https://ethereum-goerli.publicnode.com"
+gateway_staging = "${RPC_GATEWAY_STAGING}"
+gateway_testnet = "${RPC_GATEWAY_TESTNET}"
+gateway = "${RPC_GATEWAY}"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

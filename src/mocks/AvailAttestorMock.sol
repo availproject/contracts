@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.29;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
-import {AvailAttestation} from "src/AvailAttestation.sol";
+import {AvailAttestor} from "src/AvailAttestor.sol";
 
 /**
  * @author  @QEDK (Avail)
- * @title   AvailAttestationMock
+ * @title   AvailAttestatorMock
  * @notice  An mock data attestation implementation for validiums, optimiums and generic rollup stacks
  * @custom:security security@availproject.org
  */
-contract AvailAttestationMock is Initializable, AvailAttestation {
+contract AvailAttestorMock is Initializable, AvailAttestor {
     function initialize(IAvailBridge _bridge) external initializer {
-        __AvailAttestation_init(_bridge);
+        __AvailAttestor_init(_bridge);
     }
 
     // this function signature should differ based on rollup contract's expected function signature

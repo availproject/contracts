@@ -13,7 +13,7 @@ contract AvailTest is Test {
         avail = new Avail(bridge);
     }
 
-    function test_nameSymbol() external {
+    function test_nameSymbol() external view {
         assertEq(avail.name(), "Avail");
         assertEq(avail.symbol(), "AVAIL");
     }

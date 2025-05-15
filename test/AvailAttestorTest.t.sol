@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.25;
 
-import {IAvailBridge, AvailAttestation, AvailAttestationMock} from "src/mocks/AvailAttestationMock.sol";
+import {IAvailBridge, AvailAttestor, AvailAttestorMock} from "src/mocks/AvailAttestorMock.sol";
 import {VectorxMock} from "src/mocks/VectorxMock.sol";
 import {Vm, Test} from "forge-std/Test.sol";
 
-contract AvailAttestationTest is Test {
-    AvailAttestationMock public attestation;
+contract AvailAttestorTest is Test {
+    AvailAttestorMock public attestation;
     VectorxMock public vectorx;
     address public bridge;
 
@@ -14,7 +14,7 @@ contract AvailAttestationTest is Test {
         bridge = makeAddr("bridge");
         vectorx = new VectorxMock();
         vm.etch(bridge, "0xFF");
-        attestation = new AvailAttestationMock();
+        attestation = new AvailAttestorMock();
         vm.mockCall(
             address(bridge), abi.encodeWithSelector(bytes4(keccak256("vectorx()"))), abi.encode(address(vectorx))
         );
@@ -25,7 +25,7 @@ contract AvailAttestationTest is Test {
         vm.mockCall(
             address(bridge), abi.encodeWithSelector(IAvailBridge.verifyBlobLeaf.selector, input), abi.encode(false)
         );
-        vm.expectRevert(AvailAttestation.InvalidAttestationProof.selector);
+        vm.expectRevert(AvailAttestor.InvalidAttestationProof.selector);
         attestation.attest(input);
     }
 
