@@ -5,7 +5,9 @@ import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
-import {IAvailBridge, AvailBridge} from "src/AvailBridge.sol";
+import {AvailBridge} from "src/AvailBridge.sol";
+import {AvailBridge as AvailBridgeOld} from "src/AvailBridgeOld.sol";
+import {IAvailBridge, IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {Avail, IAvail} from "src/Avail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
@@ -16,6 +18,7 @@ import {Vm, Test, console} from "forge-std/Test.sol";
 contract AvailBridgeTest is Test, MurkyBase {
     AvailBridge public bridge;
     Avail public avail;
+    AvailBridgeOld public oldBridgeRouter;
     VectorxMock public vectorx;
     Sha2Merkle public sha2merkle;
     address public owner;
@@ -26,10 +29,14 @@ contract AvailBridgeTest is Test, MurkyBase {
         vectorx = new VectorxMock();
         pauser = makeAddr("pauser");
         sha2merkle = new Sha2Merkle();
+        oldBridgeRouter = new AvailBridgeOld();
+        avail = new Avail(address(oldBridgeRouter));
+        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
-        avail = new Avail(address(bridge));
-        bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        bridge.initialize(0, msg.sender, IOldAvailBridge(address(oldBridgeRouter)), msg.sender, pauser, IVectorx(vectorx));
+        vm.prank(msg.sender);
+        oldBridgeRouter.setNewBridgeAddress(address(bridge));
         owner = msg.sender;
     }
 
@@ -688,7 +695,7 @@ contract AvailBridgeTest is Test, MurkyBase {
     function test_sendAVAIL(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
-        vm.prank(address(bridge));
+        vm.prank(address(oldBridgeRouter));
         avail.mint(from, amount);
         IAvailBridge.Message memory message =
             IAvailBridge.Message(0x02, bytes32(bytes20(from)), to, 2, 1, abi.encode(bytes32(0), amount), 0);

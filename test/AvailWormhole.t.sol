@@ -12,12 +12,15 @@ contract AvailWormholeTest is Test {
     address owner;
     address governance;
     address minter;
+    address proxyAdmin;
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     function setUp() external {
         governance = makeAddr("governance");
         minter = makeAddr("minter");
         address impl = address(new AvailWormhole());
+        address proxy = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+        proxyAdmin = vm.computeCreateAddress(proxy, 1);
         avail = AvailWormhole(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
         avail.initialize(governance);
         vm.prank(governance);
@@ -57,7 +60,7 @@ contract AvailWormholeTest is Test {
     }
 
     function test_burn(address from, uint256 amount) external {
-        vm.assume(from != address(0));
+        vm.assume(from != address(0) && from != proxyAdmin);
         vm.prank(minter);
         avail.mint(from, amount);
         assertEq(avail.balanceOf(from), amount);
@@ -67,7 +70,7 @@ contract AvailWormholeTest is Test {
     }
 
     function test_burn2(address from, uint256 amount, uint256 amount2) external {
-        vm.assume(from != address(0) && amount2 < amount);
+        vm.assume(from != address(0) && from != proxyAdmin && amount2 < amount);
         vm.prank(minter);
         avail.mint(from, amount);
         assertEq(avail.balanceOf(from), amount);
