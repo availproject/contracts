@@ -15,7 +15,7 @@ import {Merkle} from "src/lib/Merkle.sol";
 import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
-import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
+import {IAvailBridge, IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
 
 /**
  * @author  @QEDK (Avail)
@@ -55,6 +55,7 @@ contract AvailBridgeV1 is
     uint256 public fees; // total fees accumulated by bridge
     uint256 public feePerByte; // in wei
     uint256 public messageId; // next nonce
+    IOldAvailBridge public oldBridgeRouter;
 
     error Unimplemented();
 
@@ -125,6 +126,10 @@ contract AvailBridgeV1 is
      */
     function updateVectorx(IVectorx newVectorx) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vectorx = newVectorx;
+    }
+
+    function setOldBridgeAddress(IOldAvailBridge _bridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        oldBridgeRouter = _bridge;
     }
 
     /**
@@ -231,7 +236,7 @@ contract AvailBridgeV1 is
 
         emit MessageReceived(message.from, dest, message.messageId);
 
-        avail.mint(dest, value);
+        oldBridgeRouter.delegateAvailMint(dest, value);
     }
 
     /**
@@ -318,7 +323,7 @@ contract AvailBridgeV1 is
 
         emit MessageSent(msg.sender, recipient, id);
 
-        avail.burn(msg.sender, amount);
+        oldBridgeRouter.delegateAvailBurn(msg.sender, amount);
     }
 
     /**
