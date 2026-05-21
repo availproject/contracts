@@ -20,6 +20,10 @@ contract AvailAttestation is Initializable, Ownable2StepUpgradeable, IAvailAttes
 
     IVectorx public vectorx;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @notice  Initializes the AvailAttestation contract
      * @param   governance  Address of the governance multisig

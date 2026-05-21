@@ -110,7 +110,7 @@ contract AvailBridgeV1Old is
     }
 
     modifier afterHaltReceiveBlock() {
-        if (block.number < halt_receive) {
+        if (halt_receive == 0 || block.number < halt_receive) {
             revert BlockHalted();
         }
         _;

@@ -59,6 +59,10 @@ contract AvailBridgeV1 is
 
     error Unimplemented();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
             revert InvalidDomain();

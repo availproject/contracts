@@ -43,6 +43,11 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         vm.stopPrank();
     }
 
+    function _activateReceiveHalt() internal {
+        vm.prank(owner);
+        oldBridgeRouter.setHaltReceive(block.number);
+    }
+
     function test_owner() external view {
         assertNotEq(bridge.owner(), address(0));
         assertEq(bridge.owner(), owner);
@@ -443,6 +448,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
 
     function test_receiveAVAIL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
         vm.assume(amount != 0);
+        _activateReceiveHalt();
         address to = makeAddr("to");
         IAvailBridge.Message memory message =
             IAvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), amount), messageId);
@@ -461,6 +467,31 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         assertEq(avail.totalSupply(), amount);
     }
 
+    function testRevertBlockHalted_receiveAVAILBeforeHaltReceive(
+        bytes32 rangeHash,
+        bytes32 from,
+        uint256 amount,
+        uint64 messageId
+    ) external {
+        vm.assume(amount != 0);
+        address to = makeAddr("to");
+        IAvailBridge.Message memory message =
+            IAvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), amount), messageId);
+        bytes32 messageHash = keccak256(abi.encode(message));
+        bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
+
+        vectorx.set(rangeHash, dataRoot);
+
+        bytes32[] memory emptyArr;
+        IAvailBridge.MerkleProofInput memory input =
+            IAvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
+
+        vm.expectRevert(IAvailBridge.BlockHalted.selector);
+        bridge.receiveAVAIL(message, input);
+        assertFalse(bridge.isBridged(messageHash));
+        assertEq(avail.totalSupply(), 0);
+    }
+
     function test_receiveAVAIL_2(
         bytes32 rangeHash,
         uint64 messageId,
@@ -471,6 +502,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     ) external {
         // this function is a bit unreadable because forge coverage does not support IR compilation which results
         // in stack too deep errors
+        _activateReceiveHalt();
         bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
         bytes32[] memory leaves = new bytes32[](c_leaves.length);
         for (uint256 i = 0; i < c_leaves.length;) {
@@ -682,6 +714,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
 
     function test_sendAVAIL(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
+        _activateReceiveHalt();
         address from = makeAddr("from");
         vm.prank(address(oldBridgeRouter));
         avail.mint(from, amount);
