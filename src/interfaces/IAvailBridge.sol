@@ -87,4 +87,5 @@ interface IAvailBridge {
 interface IOldAvailBridge {
     function delegateAvailMint(address dest, uint256 amount) external;
     function delegateAvailBurn(address dest, uint256 amount) external;
+    function isBridged(bytes32 leaf) external view returns (bool);
 }

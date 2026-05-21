@@ -406,6 +406,10 @@ contract AvailBridgeV1 is
         if (isBridged[leaf]) {
             revert AlreadyBridged();
         }
+
+        if (oldBridgeRouter.isBridged(leaf)) {
+            revert AlreadyBridged();
+        }
         // validate that the leaf being proved is indeed the message hash!
         if (input.leaf != leaf) {
             revert InvalidLeaf();
