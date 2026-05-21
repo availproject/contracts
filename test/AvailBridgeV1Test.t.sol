@@ -7,6 +7,8 @@ import {
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IAvailBridge, AvailBridgeV1} from "src/AvailBridgeV1.sol";
+import {AvailBridgeV1Old} from "src/AvailBridgeOld.sol";
+import {IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {Avail, IAvail} from "src/Avail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
@@ -16,6 +18,7 @@ import {Vm, Test, console} from "forge-std/Test.sol";
 
 contract AvailBridgeV1Test is Test, MurkyBase {
     AvailBridgeV1 public bridge;
+    AvailBridgeV1Old public oldBridgeRouter;
     Avail public avail;
     VectorxMock public vectorx;
     Sha2Merkle public sha2merkle;
@@ -29,9 +32,15 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         sha2merkle = new Sha2Merkle();
         address impl = address(new AvailBridgeV1());
         bridge = AvailBridgeV1(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
-        avail = new Avail(address(bridge));
+        oldBridgeRouter = new AvailBridgeV1Old();
+        avail = new Avail(address(oldBridgeRouter));
+        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx), 0, 0);
         bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
+        vm.startPrank(owner);
+        oldBridgeRouter.setNewBridgeAddress(address(bridge));
+        bridge.setOldBridgeAddress(IOldAvailBridge(address(oldBridgeRouter)));
+        vm.stopPrank();
     }
 
     function test_owner() external view {
@@ -630,7 +639,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     function test_sendAVAIL(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
-        vm.prank(address(bridge));
+        vm.prank(address(oldBridgeRouter));
         avail.mint(from, amount);
         IAvailBridge.Message memory message =
             IAvailBridge.Message(0x02, bytes32(bytes20(from)), to, 2, 1, abi.encode(bytes32(0), amount), 0);
