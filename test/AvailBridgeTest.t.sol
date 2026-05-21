@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.25;
 
-import {TransparentUpgradeableProxy} from
-    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    TransparentUpgradeableProxy
+} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {AvailBridge} from "src/AvailBridge.sol";
-import {AvailBridge as AvailBridgeOld} from "src/AvailBridgeOld.sol";
+import {AvailBridgeV1Old as AvailBridgeOld} from "src/AvailBridgeOld.sol";
 import {IAvailBridge, IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {Avail, IAvail} from "src/Avail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
@@ -31,10 +32,12 @@ contract AvailBridgeTest is Test, MurkyBase {
         sha2merkle = new Sha2Merkle();
         oldBridgeRouter = new AvailBridgeOld();
         avail = new Avail(address(oldBridgeRouter));
-        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx), 0, 0);
         address impl = address(new AvailBridge());
         bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
-        bridge.initialize(0, msg.sender, IOldAvailBridge(address(oldBridgeRouter)), msg.sender, pauser, IVectorx(vectorx));
+        bridge.initialize(
+            0, msg.sender, IOldAvailBridge(address(oldBridgeRouter)), msg.sender, pauser, IVectorx(vectorx)
+        );
         vm.prank(msg.sender);
         oldBridgeRouter.setNewBridgeAddress(address(bridge));
         owner = msg.sender;

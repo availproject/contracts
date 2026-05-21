@@ -2,8 +2,9 @@
 pragma solidity ^0.8.25;
 
 import {AvailWormhole} from "src/AvailWormhole.sol";
-import {TransparentUpgradeableProxy} from
-    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    TransparentUpgradeableProxy
+} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Vm, Test} from "forge-std/Test.sol";
 

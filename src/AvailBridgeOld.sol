@@ -2,11 +2,13 @@
 pragma solidity ^0.8.25;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {ReentrancyGuardUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {
+    ReentrancyGuardUpgradeable
+} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {
+    AccessControlDefaultAdminRulesUpgradeable
+} from "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Merkle} from "src/lib/Merkle.sol";
@@ -16,12 +18,12 @@ import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 
 /**
- * @author  @QEDK (Avail)
- * @title   AvailBridge
+ * @author  @QEDK (Avail), Rachit Srivastava ( @privacy_prophet )
+ * @title   AvailBridgeV1
  * @notice  An arbitrary message bridge between Avail <-> Ethereum
  * @custom:security security@availproject.org
  */
-contract AvailBridge is
+contract AvailBridgeV1Old is
     Initializable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable,
@@ -36,9 +38,8 @@ contract AvailBridge is
     uint32 private constant AVAIL_DOMAIN = 1;
     uint32 private constant ETH_DOMAIN = 2;
     uint256 private constant MAX_DATA_LENGTH = 102_400;
-    uint256 private constant HALT_BLOCK = 0; // TBD
     // Derived from abi.encodePacked("ETH")
-    // slither-disable-next-line too-many-digits
+    // slither-disable-next-line too-many-digits,unused-state
     bytes32 private constant ETH_ASSET_ID = 0x4554480000000000000000000000000000000000000000000000000000000000;
     bytes32 private constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     // map store spent message hashes, used for Avail -> Ethereum messages
@@ -54,7 +55,11 @@ contract AvailBridge is
     uint256 public fees; // total fees accumulated by bridge
     uint256 public feePerByte; // in wei
     uint256 public messageId; // next nonce
-    address private newBridge; // TDB
+    address private newBridge;
+    uint256 public halt_send;
+    uint256 public halt_receive;
+
+    error Unimplemented();
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
@@ -76,27 +81,41 @@ contract AvailBridge is
         }
         _;
     }
-
     modifier onlyNewBridge() {
         if (msg.sender != newBridge) {
-            revert InvalidSender(); 
+            revert InvalidSender();
         }
         _;
     }
-    
-    modifier beforeHaltBlock() {
-        if (block.number >= HALT_BLOCK) {
+
+    modifier beforeHaltSendBlock() {
+        if (block.number >= halt_send) {
             revert BlockHalted();
         }
         _;
     }
-    
-    modifier afterHaltBlock() {
-        if (block.number < HALT_BLOCK) {
+
+    modifier afterHaltSendBlock() {
+        if (block.number < halt_send) {
             revert BlockHalted();
         }
         _;
     }
+
+    modifier beforeHaltReceiveBlock() {
+        if (block.number >= halt_receive) {
+            revert BlockHalted();
+        }
+        _;
+    }
+
+    modifier afterHaltReceiveBlock() {
+        if (block.number < halt_receive) {
+            revert BlockHalted();
+        }
+        _;
+    }
+
     /**
      * @notice  Initializes the AvailBridge contract
      * @param   newFeePerByte  New fee per byte value
@@ -112,7 +131,9 @@ contract AvailBridge is
         IAvail newAvail,
         address governance,
         address pauser,
-        IVectorx newVectorx
+        IVectorx newVectorx,
+        uint256 _haltSend,
+        uint256 _haltReceive
     ) external initializer {
         feePerByte = newFeePerByte;
         // slither-disable-next-line missing-zero-check
@@ -123,6 +144,8 @@ contract AvailBridge is
         _grantRole(PAUSER_ROLE, pauser);
         __Pausable_init();
         __ReentrancyGuard_init();
+        halt_send = _haltSend;
+        halt_receive = _haltReceive;
     }
 
     /**
@@ -141,7 +164,7 @@ contract AvailBridge is
      * @notice  Update the address of the VectorX contract
      * @param   newVectorx  Address of new VectorX contract
      */
-    function updateVectorx(IVectorx newVectorx) external beforeHaltBlock onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateVectorx(IVectorx newVectorx) external beforeHaltSendBlock onlyRole(DEFAULT_ADMIN_ROLE) {
         vectorx = newVectorx;
     }
 
@@ -153,7 +176,7 @@ contract AvailBridge is
      */
     function updateTokens(bytes32[] calldata assetIds, address[] calldata tokenAddresses)
         external
-        beforeHaltBlock()
+        beforeHaltReceiveBlock
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         uint256 length = assetIds.length;
@@ -173,7 +196,7 @@ contract AvailBridge is
      * @dev     Only callable by governance
      * @param   newFeePerByte  New fee per byte value
      */
-    function updateFeePerByte(uint256 newFeePerByte) external beforeHaltBlock onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateFeePerByte(uint256 newFeePerByte) external beforeHaltReceiveBlock onlyRole(DEFAULT_ADMIN_ROLE) {
         feePerByte = newFeePerByte;
     }
 
@@ -182,7 +205,7 @@ contract AvailBridge is
      * @dev     Only callable by governance
      * @param   newFeeRecipient  New fee recipient address
      */
-    function updateFeeRecipient(address newFeeRecipient) external beforeHaltBlock onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateFeeRecipient(address newFeeRecipient) external beforeHaltReceiveBlock onlyRole(DEFAULT_ADMIN_ROLE) {
         // slither-disable-next-line missing-zero-check
         feeRecipient = newFeeRecipient;
     }
@@ -210,7 +233,7 @@ contract AvailBridge is
     function receiveMessage(Message calldata message, MerkleProofInput calldata input)
         external
         whenNotPaused
-        beforeHaltBlock
+        beforeHaltReceiveBlock
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         nonReentrant
     {
@@ -236,7 +259,7 @@ contract AvailBridge is
     function receiveAVAIL(Message calldata message, MerkleProofInput calldata input)
         external
         whenNotPaused
-        beforeHaltBlock
+        beforeHaltReceiveBlock
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
     {
@@ -259,72 +282,39 @@ contract AvailBridge is
      * @notice  Takes an ETH transfer message and its proof of inclusion, verifies and executes it (if valid)
      * @dev     This function is used for ETH transfers from Avail to Ethereum
      * @param   message  Message that is used to reconstruct the bridge leaf
-     * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveETH(Message calldata message, MerkleProofInput calldata input)
+    function receiveETH(Message calldata message, MerkleProofInput calldata)
         external
         whenNotPaused
-        beforeHaltBlock
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
         nonReentrant
     {
-        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
-        if (assetId != ETH_ASSET_ID) {
-            revert InvalidAssetId();
-        }
-
-        _checkBridgeLeaf(message, input);
-
-        // downcast SCALE-encoded bytes to an Ethereum address
-        address dest = address(bytes20(message.to));
-
-        emit MessageReceived(message.from, dest, message.messageId);
-
-        // slither-disable-next-line arbitrary-send-eth,missing-zero-check,low-level-calls
-        (bool success,) = dest.call{value: value}("");
-        if (!success) {
-            revert UnlockFailed();
-        }
+        revert Unimplemented(); // not implemented
     }
 
     /**
      * @notice  Takes an ERC20 transfer message and its proof of inclusion, verifies and executes it (if valid)
      * @dev     This function is used for ERC20 transfers from Avail to Ethereum
      * @param   message  Message that is used to reconstruct the bridge leaf
-     * @param   input  Merkle tree proof of inclusion for the bridge leaf
      */
-    function receiveERC20(Message calldata message, MerkleProofInput calldata input)
+    function receiveERC20(Message calldata message, MerkleProofInput calldata)
         external
         whenNotPaused
-        beforeHaltBlock
         onlySupportedDomain(message.originDomain, message.destinationDomain)
         onlyTokenTransfer(message.messageType)
         nonReentrant
     {
-        (bytes32 assetId, uint256 value) = abi.decode(message.data, (bytes32, uint256));
-        address token = tokens[assetId];
-        if (token == address(0)) {
-            revert InvalidAssetId();
-        }
-
-        _checkBridgeLeaf(message, input);
-
-        // downcast SCALE-encoded bytes to an Ethereum address
-        address dest = address(bytes20(message.to));
-
-        emit MessageReceived(message.from, dest, message.messageId);
-
-        IERC20(token).safeTransfer(dest, value);
+        revert Unimplemented();
     }
 
     /**
-     * @notice  Emits a corresponding arbitrary messag event on Avail
+     * @notice  Emits a corresponding arbitrary message event on Avail
      * @dev     This function is used for passing arbitrary data from Ethereum to Avail
      * @param   recipient  Recipient of the message on Avail
      * @param   data  Data to send
      */
-    function sendMessage(bytes32 recipient, bytes calldata data) external payable whenNotPaused beforeHaltBlock {
+    function sendMessage(bytes32 recipient, bytes calldata data) external payable whenNotPaused beforeHaltSendBlock {
         uint256 length = data.length;
         if (length == 0 || length > MAX_DATA_LENGTH) {
             revert InvalidDataLength();
@@ -353,7 +343,12 @@ contract AvailBridge is
      * @param   recipient  Recipient of the AVAIL tokens on Avail
      * @param   amount  Amount of AVAIL tokens to bridge
      */
-    function sendAVAIL(bytes32 recipient, uint256 amount) external whenNotPaused beforeHaltBlock checkDestAmt(recipient, amount) {
+    function sendAVAIL(bytes32 recipient, uint256 amount)
+        external
+        whenNotPaused
+        beforeHaltSendBlock
+        checkDestAmt(recipient, amount)
+    {
         uint256 id;
         unchecked {
             id = messageId++;
@@ -380,66 +375,26 @@ contract AvailBridge is
      * @dev     This function is used for ETH transfers from Ethereum to Avail
      * @param   recipient  Recipient of the ETH on Avail
      */
-    function sendETH(bytes32 recipient) external payable whenNotPaused beforeHaltBlock checkDestAmt(recipient, msg.value) {
-        uint256 id;
-        unchecked {
-            id = messageId++;
-        }
-        Message memory message = Message(
-            TOKEN_TX_PREFIX,
-            bytes32(bytes20(msg.sender)),
-            recipient,
-            ETH_DOMAIN,
-            AVAIL_DOMAIN,
-            abi.encode(ETH_ASSET_ID, msg.value),
-            uint64(id)
-        );
-        // store message hash to be retrieved later by our light client
-        isSent[id] = keccak256(abi.encode(message));
-
-        emit MessageSent(msg.sender, recipient, id);
+    function sendETH(bytes32 recipient) external payable whenNotPaused checkDestAmt(recipient, msg.value) {
+        revert Unimplemented(); // not implemented
     }
 
     /**
      * @notice  Bridges ERC20 tokens to the specified recipient on Avail
      * @dev     This function is used for ERC20 transfers from Ethereum to Avail
-     * @param   assetId  Asset ID of the ERC20 token
      * @param   recipient  Recipient of the asset on Avail
      * @param   amount  Amount of ERC20 tokens to bridge
      */
-    function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount)
+    function sendERC20(bytes32, bytes32 recipient, uint256 amount)
         external
+        view
         whenNotPaused
-        beforeHaltBlock
         checkDestAmt(recipient, amount)
     {
-        address token = tokens[assetId];
-        if (token == address(0)) {
-            revert InvalidAssetId();
-        }
-        uint256 id;
-        unchecked {
-            id = messageId++;
-        }
-        Message memory message = Message(
-            TOKEN_TX_PREFIX,
-            bytes32(bytes20(msg.sender)),
-            recipient,
-            ETH_DOMAIN,
-            AVAIL_DOMAIN,
-            abi.encode(assetId, amount),
-            uint64(id)
-        );
-        // store message hash to be retrieved later by our light client
-        isSent[id] = keccak256(abi.encode(message));
-
-        emit MessageSent(msg.sender, recipient, id);
-
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        revert Unimplemented(); // not implemented
     }
 
-
-    function delegateAvailMint(address dest, uint256 amount) external afterHaltBlock onlyNewBridge {
+    function delegateAvailMint(address dest, uint256 amount) external afterHaltReceiveBlock onlyNewBridge {
         if (dest == address(0) || amount == 0) {
             revert InvalidDestinationOrAmount();
         }
@@ -447,8 +402,7 @@ contract AvailBridge is
         avail.mint(dest, amount);
     }
 
-    function delegateAvailBurn(address dest, uint256 amount) external afterHaltBlock onlyNewBridge {
-         
+    function delegateAvailBurn(address dest, uint256 amount) external afterHaltReceiveBlock onlyNewBridge {
         if (dest == address(0) || amount == 0) {
             revert InvalidDestinationOrAmount();
         }
@@ -456,8 +410,16 @@ contract AvailBridge is
         avail.burn(dest, amount);
     }
 
-    function setNewBridgeAddress(address _newBridge) external onlyRole(DEFAULT_ADMIN_ROLE) { 
+    function setNewBridgeAddress(address _newBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
         newBridge = _newBridge;
+    }
+
+    function setHaltSend(uint256 _haltSend) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        halt_send = _haltSend;
+    }
+
+    function setHaltReceive(uint256 _haltReceive) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        halt_receive = _haltReceive;
     }
 
     /**
@@ -536,11 +498,10 @@ contract AvailBridge is
         }
         // we construct the data root here internally, it is not possible to create an invalid data root that is
         // also part of the commitment tree
-        if (
-            !input.dataRootProof.verifySha2(
-                dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
-            )
-        ) {
+        if (!input.dataRootProof
+                .verifySha2(
+                    dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
+                )) {
             revert InvalidDataRootProof();
         }
     }
