@@ -18,7 +18,7 @@ import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
 import {IAvailBridge, IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
 
 /**
- * @author  @QEDK (Avail)
+ * @author  @QEDK (Avail), Rachit Anand Srivastava (@privacy_prophet)
  * @title   AvailBridgeV1
  * @notice  An arbitrary message bridge between Avail <-> Ethereum
  * @custom:security security@availproject.org
