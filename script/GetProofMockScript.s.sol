@@ -23,7 +23,7 @@ contract GetProofMockScript is Script {
         AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         ERC20Mock avail = new ERC20Mock();
         AvailBridgeOld oldBridge = new AvailBridgeOld();
-        oldBridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx), 0, 0);
+        oldBridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
         bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
         oldBridge.setNewBridgeAddress(address(bridge));
         bridge.setOldBridgeAddress(IOldAvailBridge(address(oldBridge)));

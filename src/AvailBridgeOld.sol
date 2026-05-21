@@ -131,9 +131,7 @@ contract AvailBridgeV1Old is
         IAvail newAvail,
         address governance,
         address pauser,
-        IVectorx newVectorx,
-        uint256 _haltSend,
-        uint256 _haltReceive
+        IVectorx newVectorx
     ) external initializer {
         feePerByte = newFeePerByte;
         // slither-disable-next-line missing-zero-check
@@ -144,8 +142,6 @@ contract AvailBridgeV1Old is
         _grantRole(PAUSER_ROLE, pauser);
         __Pausable_init();
         __ReentrancyGuard_init();
-        halt_send = _haltSend;
-        halt_receive = _haltReceive;
     }
 
     /**
@@ -415,10 +411,18 @@ contract AvailBridgeV1Old is
     }
 
     function setHaltSend(uint256 _haltSend) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (halt_send != 0) {
+            revert HaltSendAlreadySet();
+        }
+
         halt_send = _haltSend;
     }
 
     function setHaltReceive(uint256 _haltReceive) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (halt_receive != 0) {
+            revert HaltReceiveAlreadySet();
+        }
+
         halt_receive = _haltReceive;
     }
 

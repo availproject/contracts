@@ -50,6 +50,8 @@ interface IAvailBridge {
     error BridgeRootEmpty();
     error DataRootCommitmentEmpty();
     error FeeTooLow();
+    error HaltReceiveAlreadySet();
+    error HaltSendAlreadySet();
     error InvalidAssetId();
     error InvalidDataLength();
     error InvalidDataRootProof();

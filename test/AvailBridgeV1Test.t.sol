@@ -34,7 +34,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         bridge = AvailBridgeV1(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
         oldBridgeRouter = new AvailBridgeV1Old();
         avail = new Avail(address(oldBridgeRouter));
-        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx), 0, 0);
+        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
         vm.startPrank(owner);
@@ -51,6 +51,50 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     function test_feeRecipient() external view {
         assertNotEq(bridge.feeRecipient(), address(0));
         assertEq(bridge.feeRecipient(), owner);
+    }
+
+    function testRevertUnauthorizedAccount_setHaltSend(uint256 haltSend) external {
+        address rand = makeAddr("rand");
+        vm.assume(rand != owner);
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
+        vm.prank(rand);
+        oldBridgeRouter.setHaltSend(haltSend);
+    }
+
+    function test_setHaltSend(uint256 haltSend) external {
+        vm.prank(owner);
+        oldBridgeRouter.setHaltSend(haltSend);
+        assertEq(oldBridgeRouter.halt_send(), haltSend);
+    }
+
+    function testRevertHaltSendAlreadySet_setHaltSend(uint256 haltSend) external {
+        vm.assume(haltSend != 0);
+        vm.startPrank(owner);
+        oldBridgeRouter.setHaltSend(haltSend);
+        vm.expectRevert(IAvailBridge.HaltSendAlreadySet.selector);
+        oldBridgeRouter.setHaltSend(haltSend);
+    }
+
+    function testRevertUnauthorizedAccount_setHaltReceive(uint256 haltReceive) external {
+        address rand = makeAddr("rand");
+        vm.assume(rand != owner);
+        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
+        vm.prank(rand);
+        oldBridgeRouter.setHaltReceive(haltReceive);
+    }
+
+    function test_setHaltReceive(uint256 haltReceive) external {
+        vm.prank(owner);
+        oldBridgeRouter.setHaltReceive(haltReceive);
+        assertEq(oldBridgeRouter.halt_receive(), haltReceive);
+    }
+
+    function testRevertHaltReceiveAlreadySet_setHaltReceive(uint256 haltReceive) external {
+        vm.assume(haltReceive != 0);
+        vm.startPrank(owner);
+        oldBridgeRouter.setHaltReceive(haltReceive);
+        vm.expectRevert(IAvailBridge.HaltReceiveAlreadySet.selector);
+        oldBridgeRouter.setHaltReceive(haltReceive);
     }
 
     function testRevertUnauthorizedAccount_setFeePerByte(uint256 feePerByte) external {
