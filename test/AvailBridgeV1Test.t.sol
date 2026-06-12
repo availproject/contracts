@@ -69,7 +69,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     function test_setHaltSend(uint256 haltSend) external {
         vm.prank(owner);
         oldBridgeRouter.setHaltSend(haltSend);
-        assertEq(oldBridgeRouter.halt_send(), haltSend);
+        assertEq(oldBridgeRouter.haltSend(), haltSend);
     }
 
     function testRevertHaltSendAlreadySet_setHaltSend(uint256 haltSend) external {
@@ -91,7 +91,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     function test_setHaltReceive(uint256 haltReceive) external {
         vm.prank(owner);
         oldBridgeRouter.setHaltReceive(haltReceive);
-        assertEq(oldBridgeRouter.halt_receive(), haltReceive);
+        assertEq(oldBridgeRouter.haltReceive(), haltReceive);
     }
 
     function testRevertHaltReceiveAlreadySet_setHaltReceive(uint256 haltReceive) external {

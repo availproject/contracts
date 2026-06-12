@@ -56,10 +56,11 @@ contract AvailBridgeV1Old is
     uint256 public feePerByte; // in wei
     uint256 public messageId; // next nonce
     address private newBridge;
-    uint256 public halt_send;
-    uint256 public halt_receive;
+    uint256 public haltSend;
+    uint256 public haltReceive;
 
     error Unimplemented();
+    error ZeroAddress();
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
@@ -89,28 +90,28 @@ contract AvailBridgeV1Old is
     }
 
     modifier beforeHaltSendBlock() {
-        if (block.number >= halt_send) {
+        if (block.number >= haltSend) {
             revert BlockHalted();
         }
         _;
     }
 
     modifier afterHaltSendBlock() {
-        if (block.number < halt_send) {
+        if (block.number < haltSend) {
             revert BlockHalted();
         }
         _;
     }
 
     modifier beforeHaltReceiveBlock() {
-        if (block.number >= halt_receive) {
+        if (block.number >= haltReceive) {
             revert BlockHalted();
         }
         _;
     }
 
     modifier afterHaltReceiveBlock() {
-        if (halt_receive == 0 || block.number < halt_receive) {
+        if (haltReceive == 0 || block.number < haltReceive) {
             revert BlockHalted();
         }
         _;
@@ -406,24 +407,28 @@ contract AvailBridgeV1Old is
         avail.burn(dest, amount);
     }
 
-    function setNewBridgeAddress(address _newBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        newBridge = _newBridge;
+    function setNewBridgeAddress(address newBridgeAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newBridgeAddress == address(0)) {
+            revert ZeroAddress();
+        }
+
+        newBridge = newBridgeAddress;
     }
 
-    function setHaltSend(uint256 _haltSend) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (halt_send != 0) {
+    function setHaltSend(uint256 newHaltSend) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (haltSend != 0) {
             revert HaltSendAlreadySet();
         }
 
-        halt_send = _haltSend;
+        haltSend = newHaltSend;
     }
 
-    function setHaltReceive(uint256 _haltReceive) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (halt_receive != 0) {
+    function setHaltReceive(uint256 newHaltReceive) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (haltReceive != 0) {
             revert HaltReceiveAlreadySet();
         }
 
-        halt_receive = _haltReceive;
+        haltReceive = newHaltReceive;
     }
 
     /**

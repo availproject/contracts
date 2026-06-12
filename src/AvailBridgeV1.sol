@@ -132,8 +132,8 @@ contract AvailBridgeV1 is
         vectorx = newVectorx;
     }
 
-    function setOldBridgeAddress(IOldAvailBridge _bridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        oldBridgeRouter = _bridge;
+    function setOldBridgeAddress(IOldAvailBridge newOldBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        oldBridgeRouter = newOldBridge;
     }
 
     /**
