@@ -8,6 +8,9 @@ via_ir = true
 solc_version = "0.8.29"
 evm_version = "cancun"
 
+# inherits profile.default; exists because CI sets FOUNDRY_PROFILE=ci
+[profile.ci]
+
 [profile.intense.fuzz]
 max_test_rejects = 999999
 runs = 10000
