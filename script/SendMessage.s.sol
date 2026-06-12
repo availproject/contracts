@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.25;
 
-import {TransparentUpgradeableProxy} from
-    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    TransparentUpgradeableProxy
+} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {AvailBridge} from "src/AvailBridge.sol";
+import {AvailBridgeV1 as AvailBridge} from "src/AvailBridgeV1.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {Avail} from "src/Avail.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";

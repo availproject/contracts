@@ -46,9 +46,12 @@ interface IAvailBridge {
     error AlreadyBridged();
     error ArrayLengthMismatch();
     error BlobRootEmpty();
+    error BlockHalted();
     error BridgeRootEmpty();
     error DataRootCommitmentEmpty();
     error FeeTooLow();
+    error HaltReceiveAlreadySet();
+    error HaltSendAlreadySet();
     error InvalidAssetId();
     error InvalidDataLength();
     error InvalidDataRootProof();
@@ -58,6 +61,7 @@ interface IAvailBridge {
     error InvalidLeaf();
     error InvalidMerkleProof();
     error InvalidMessage();
+    error InvalidSender();
     error UnlockFailed();
     error WithdrawFailed();
 
@@ -78,4 +82,10 @@ interface IAvailBridge {
     function sendERC20(bytes32 assetId, bytes32 recipient, uint256 amount) external;
     function verifyBlobLeaf(MerkleProofInput calldata input) external view returns (bool);
     function verifyBridgeLeaf(MerkleProofInput calldata input) external view returns (bool);
+}
+
+interface IOldAvailBridge {
+    function delegateAvailMint(address dest, uint256 amount) external;
+    function delegateAvailBurn(address dest, uint256 amount) external;
+    function isBridged(bytes32 leaf) external view returns (bool);
 }

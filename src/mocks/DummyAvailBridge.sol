@@ -2,11 +2,13 @@
 pragma solidity ^0.8.25;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {ReentrancyGuardUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {
+    ReentrancyGuardUpgradeable
+} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {
+    AccessControlDefaultAdminRulesUpgradeable
+} from "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Merkle} from "src/lib/Merkle.sol";
@@ -496,11 +498,10 @@ contract DummyAvailBridge is
         }
         // we construct the data root here internally, it is not possible to create an invalid data root that is
         // also part of the commitment tree
-        if (
-            !input.dataRootProof.verifySha2(
-                dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
-            )
-        ) {
+        if (!input.dataRootProof
+                .verifySha2(
+                    dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
+                )) {
             revert InvalidDataRootProof();
         }
     }

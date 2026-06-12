@@ -2,8 +2,9 @@
 pragma solidity ^0.8.29;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {Ownable2StepUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {
+    Ownable2StepUpgradeable
+} from "lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {Merkle} from "src/lib/Merkle.sol";
 import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {IAvailAttestation} from "src/interfaces/IAvailAttestation.sol";
@@ -18,6 +19,10 @@ contract AvailAttestation is Initializable, Ownable2StepUpgradeable, IAvailAttes
     using Merkle for bytes32[];
 
     IVectorx public vectorx;
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @notice  Initializes the AvailAttestation contract
@@ -65,11 +70,10 @@ contract AvailAttestation is Initializable, Ownable2StepUpgradeable, IAvailAttes
         }
         // we construct the data root here internally, it is not possible to create an invalid data root that is
         // also part of the commitment tree
-        if (
-            !input.dataRootProof.verifySha2(
-                dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
-            )
-        ) {
+        if (!input.dataRootProof
+                .verifySha2(
+                    dataRootCommitment, input.dataRootIndex, keccak256(abi.encode(input.blobRoot, input.bridgeRoot))
+                )) {
             revert InvalidDataRootProof();
         }
     }

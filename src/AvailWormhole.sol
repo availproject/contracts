@@ -5,8 +5,9 @@ import {
     ERC20Upgradeable,
     ERC20PermitUpgradeable
 } from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {
+    AccessControlDefaultAdminRulesUpgradeable
+} from "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {INttToken} from "src/interfaces/INttToken.sol";
 
 /**
