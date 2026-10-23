@@ -15,10 +15,10 @@ import {Merkle} from "src/lib/Merkle.sol";
 import {IVectorx} from "src/interfaces/IVectorx.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";
 import {IMessageReceiver} from "src/interfaces/IMessageReceiver.sol";
-import {IAvailBridge, IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
+import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 
 /**
- * @author  @QEDK (Avail), Rachit Anand Srivastava (@privacy_prophet)
+ * @author  @QEDK (Avail)
  * @title   AvailBridgeV1
  * @notice  An arbitrary message bridge between Avail <-> Ethereum
  * @custom:security security@availproject.org
@@ -55,13 +55,8 @@ contract AvailBridgeV1 is
     uint256 public fees; // total fees accumulated by bridge
     uint256 public feePerByte; // in wei
     uint256 public messageId; // next nonce
-    IOldAvailBridge public oldBridgeRouter;
 
     error Unimplemented();
-
-    constructor() {
-        _disableInitializers();
-    }
 
     modifier onlySupportedDomain(uint32 originDomain, uint32 destinationDomain) {
         if (originDomain != AVAIL_DOMAIN || destinationDomain != ETH_DOMAIN) {
@@ -130,10 +125,6 @@ contract AvailBridgeV1 is
      */
     function updateVectorx(IVectorx newVectorx) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vectorx = newVectorx;
-    }
-
-    function setOldBridgeAddress(IOldAvailBridge newOldBridge) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        oldBridgeRouter = newOldBridge;
     }
 
     /**
@@ -240,7 +231,7 @@ contract AvailBridgeV1 is
 
         emit MessageReceived(message.from, dest, message.messageId);
 
-        oldBridgeRouter.delegateAvailMint(dest, value);
+        avail.mint(dest, value);
     }
 
     /**
@@ -327,7 +318,7 @@ contract AvailBridgeV1 is
 
         emit MessageSent(msg.sender, recipient, id);
 
-        oldBridgeRouter.delegateAvailBurn(msg.sender, amount);
+        avail.burn(msg.sender, amount);
     }
 
     /**
@@ -404,10 +395,6 @@ contract AvailBridgeV1 is
     function _checkBridgeLeaf(Message calldata message, MerkleProofInput calldata input) private {
         bytes32 leaf = keccak256(abi.encode(message));
         if (isBridged[leaf]) {
-            revert AlreadyBridged();
-        }
-
-        if (oldBridgeRouter.isBridged(leaf)) {
             revert AlreadyBridged();
         }
         // validate that the leaf being proved is indeed the message hash!

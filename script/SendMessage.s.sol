@@ -5,7 +5,7 @@ import {
     TransparentUpgradeableProxy
 } from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {AvailBridgeV1 as AvailBridge} from "src/AvailBridgeV1.sol";
+import {AvailBridgeV1} from "src/AvailBridgeV1.sol";
 import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {Avail} from "src/Avail.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";
@@ -17,7 +17,7 @@ contract SendMessageScript is Script {
     function run() external {
         vm.startBroadcast();
         address bridgeAddr = vm.envAddress("BRIDGE");
-        AvailBridge bridge = AvailBridge(bridgeAddr);
+        AvailBridgeV1 bridge = AvailBridgeV1(bridgeAddr);
         bridge.sendMessage(bytes32(bytes("5GQsUevGEkoxGDJPDWbQiKDxqKmgZ5pGc732x7iXNBa1oAij")), "Hello, World!");
         console.logBytes32(bridge.isSent(0));
         IAvailBridge.Message memory message = IAvailBridge.Message(
@@ -28,19 +28,6 @@ contract SendMessageScript is Script {
             1,
             "Hello, World!",
             0
-        );
-        console.logBytes(abi.encode(message));
-        console.logBytes32(keccak256(abi.encode(message)));
-        bridge.sendETH{value: 1 wei}(bytes32(bytes("5GQsUevGEkoxGDJPDWbQiKDxqKmgZ5pGc732x7iXNBa1oAij")));
-        console.logBytes32(bridge.isSent(1));
-        message = IAvailBridge.Message(
-            0x02,
-            bytes32(bytes20(0x681257BED628425a28B469114Dc21A7c30205cFD)),
-            bytes32(bytes("5GQsUevGEkoxGDJPDWbQiKDxqKmgZ5pGc732x7iXNBa1oAij")),
-            2,
-            1,
-            abi.encode(0x4554480000000000000000000000000000000000000000000000000000000000, 1),
-            1
         );
         console.logBytes(abi.encode(message));
         console.logBytes32(keccak256(abi.encode(message)));

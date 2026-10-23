@@ -34,7 +34,7 @@ contract AvailAttestationTest is Test, MurkyBase {
     function testRevertOwnableUnauthorizedAccount_updateVectorx(IVectorx newVectorx) external {
         address rand = makeAddr("rand");
         vm.assume(rand != owner);
-        vm.expectRevert(abi.encodeWithSelector((Ownable.OwnableUnauthorizedAccount.selector), rand, 0x0));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, rand));
         vm.prank(rand);
         bridge.updateVectorx(newVectorx);
     }

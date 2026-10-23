@@ -7,8 +7,6 @@ import {
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IAvailBridge, AvailBridgeV1} from "src/AvailBridgeV1.sol";
-import {AvailBridgeV1Old} from "src/AvailBridgeOld.sol";
-import {IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {Avail, IAvail} from "src/Avail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
@@ -18,7 +16,6 @@ import {Vm, Test, console} from "forge-std/Test.sol";
 
 contract AvailBridgeV1Test is Test, MurkyBase {
     AvailBridgeV1 public bridge;
-    AvailBridgeV1Old public oldBridgeRouter;
     Avail public avail;
     VectorxMock public vectorx;
     Sha2Merkle public sha2merkle;
@@ -32,20 +29,9 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         sha2merkle = new Sha2Merkle();
         address impl = address(new AvailBridgeV1());
         bridge = AvailBridgeV1(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
-        oldBridgeRouter = new AvailBridgeV1Old();
-        avail = new Avail(address(oldBridgeRouter));
-        oldBridgeRouter.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
+        avail = new Avail(address(bridge));
         bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, pauser, IVectorx(vectorx));
         owner = msg.sender;
-        vm.startPrank(owner);
-        oldBridgeRouter.setNewBridgeAddress(address(bridge));
-        bridge.setOldBridgeAddress(IOldAvailBridge(address(oldBridgeRouter)));
-        vm.stopPrank();
-    }
-
-    function _activateReceiveHalt() internal {
-        vm.prank(owner);
-        oldBridgeRouter.setHaltReceive(block.number);
     }
 
     function test_owner() external view {
@@ -56,50 +42,6 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     function test_feeRecipient() external view {
         assertNotEq(bridge.feeRecipient(), address(0));
         assertEq(bridge.feeRecipient(), owner);
-    }
-
-    function testRevertUnauthorizedAccount_setHaltSend(uint256 haltSend) external {
-        address rand = makeAddr("rand");
-        vm.assume(rand != owner);
-        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
-        vm.prank(rand);
-        oldBridgeRouter.setHaltSend(haltSend);
-    }
-
-    function test_setHaltSend(uint256 haltSend) external {
-        vm.prank(owner);
-        oldBridgeRouter.setHaltSend(haltSend);
-        assertEq(oldBridgeRouter.haltSend(), haltSend);
-    }
-
-    function testRevertHaltSendAlreadySet_setHaltSend(uint256 haltSend) external {
-        vm.assume(haltSend != 0);
-        vm.startPrank(owner);
-        oldBridgeRouter.setHaltSend(haltSend);
-        vm.expectRevert(IAvailBridge.HaltSendAlreadySet.selector);
-        oldBridgeRouter.setHaltSend(haltSend);
-    }
-
-    function testRevertUnauthorizedAccount_setHaltReceive(uint256 haltReceive) external {
-        address rand = makeAddr("rand");
-        vm.assume(rand != owner);
-        vm.expectRevert(abi.encodeWithSelector((IAccessControl.AccessControlUnauthorizedAccount.selector), rand, 0x0));
-        vm.prank(rand);
-        oldBridgeRouter.setHaltReceive(haltReceive);
-    }
-
-    function test_setHaltReceive(uint256 haltReceive) external {
-        vm.prank(owner);
-        oldBridgeRouter.setHaltReceive(haltReceive);
-        assertEq(oldBridgeRouter.haltReceive(), haltReceive);
-    }
-
-    function testRevertHaltReceiveAlreadySet_setHaltReceive(uint256 haltReceive) external {
-        vm.assume(haltReceive != 0);
-        vm.startPrank(owner);
-        oldBridgeRouter.setHaltReceive(haltReceive);
-        vm.expectRevert(IAvailBridge.HaltReceiveAlreadySet.selector);
-        oldBridgeRouter.setHaltReceive(haltReceive);
     }
 
     function testRevertUnauthorizedAccount_setFeePerByte(uint256 feePerByte) external {
@@ -448,7 +390,6 @@ contract AvailBridgeV1Test is Test, MurkyBase {
 
     function test_receiveAVAIL(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
         vm.assume(amount != 0);
-        _activateReceiveHalt();
         address to = makeAddr("to");
         IAvailBridge.Message memory message =
             IAvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), amount), messageId);
@@ -467,31 +408,6 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         assertEq(avail.totalSupply(), amount);
     }
 
-    function testRevertBlockHalted_receiveAVAILBeforeHaltReceive(
-        bytes32 rangeHash,
-        bytes32 from,
-        uint256 amount,
-        uint64 messageId
-    ) external {
-        vm.assume(amount != 0);
-        address to = makeAddr("to");
-        IAvailBridge.Message memory message =
-            IAvailBridge.Message(0x02, from, bytes32(bytes20(to)), 1, 2, abi.encode(bytes32(0), amount), messageId);
-        bytes32 messageHash = keccak256(abi.encode(message));
-        bytes32 dataRoot = keccak256(abi.encode(bytes32(0), messageHash));
-
-        vectorx.set(rangeHash, dataRoot);
-
-        bytes32[] memory emptyArr;
-        IAvailBridge.MerkleProofInput memory input =
-            IAvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
-
-        vm.expectRevert(IAvailBridge.BlockHalted.selector);
-        bridge.receiveAVAIL(message, input);
-        assertFalse(bridge.isBridged(messageHash));
-        assertEq(avail.totalSupply(), 0);
-    }
-
     function test_receiveAVAIL_2(
         bytes32 rangeHash,
         uint64 messageId,
@@ -502,7 +418,6 @@ contract AvailBridgeV1Test is Test, MurkyBase {
     ) external {
         // this function is a bit unreadable because forge coverage does not support IR compilation which results
         // in stack too deep errors
-        _activateReceiveHalt();
         bytes32[] memory dataRoots = new bytes32[](c_dataRoots.length);
         bytes32[] memory leaves = new bytes32[](c_leaves.length);
         for (uint256 i = 0; i < c_leaves.length;) {
@@ -566,7 +481,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         }
     }
 
-    function test_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
+    function testRevertUnimplemented_receiveETH(bytes32 rangeHash, bytes32 from, uint256 amount, uint64 messageId) external {
         vm.assume(amount != 0);
         address to = makeAddr("to");
         vm.deal(address(bridge), amount);
@@ -592,7 +507,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         bridge.receiveETH(message, input);
     }
 
-    function test_receiveERC20(bytes32 rangeHash, bytes32 assetId, bytes32 from, uint256 amount, uint64 messageId)
+    function testRevertUnimplemented_receiveERC20(bytes32 rangeHash, bytes32 assetId, bytes32 from, uint256 amount, uint64 messageId)
         external
     {
         vm.assume(amount != 0);
@@ -616,7 +531,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         IAvailBridge.MerkleProofInput memory input =
             IAvailBridge.MerkleProofInput(emptyArr, emptyArr, rangeHash, 0, bytes32(0), messageHash, messageHash, 0);
 
-        vm.expectRevert();
+        vm.expectRevert(AvailBridgeV1.Unimplemented.selector);
         bridge.receiveERC20(message, input);
     }
 
@@ -714,9 +629,8 @@ contract AvailBridgeV1Test is Test, MurkyBase {
 
     function test_sendAVAIL(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
-        _activateReceiveHalt();
         address from = makeAddr("from");
-        vm.prank(address(oldBridgeRouter));
+        vm.prank(address(bridge));
         avail.mint(from, amount);
         IAvailBridge.Message memory message =
             IAvailBridge.Message(0x02, bytes32(bytes20(from)), to, 2, 1, abi.encode(bytes32(0), amount), 0);
@@ -728,7 +642,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         assertEq(avail.totalSupply(), 0);
     }
 
-    function test_sendETH(bytes32 to, uint128 amount) external {
+    function testRevertUnimplemented_sendETH(bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
         vm.deal(from, amount);
@@ -737,7 +651,7 @@ contract AvailBridgeV1Test is Test, MurkyBase {
         bridge.sendETH{value: amount}(to);
     }
 
-    function test_sendERC20(bytes32 assetId, bytes32 to, uint128 amount) external {
+    function testRevertUnimplemented_sendERC20(bytes32 assetId, bytes32 to, uint128 amount) external {
         vm.assume(to != bytes32(0) && amount != 0);
         address from = makeAddr("from");
         ERC20Mock token = new ERC20Mock();

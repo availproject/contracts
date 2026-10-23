@@ -5,9 +5,8 @@ import {
     TransparentUpgradeableProxy
 } from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {AvailBridgeV1 as AvailBridge} from "src/AvailBridgeV1.sol";
-import {AvailBridgeV1Old as AvailBridgeOld} from "src/AvailBridgeOld.sol";
-import {IAvailBridge, IOldAvailBridge} from "src/interfaces/IAvailBridge.sol";
+import {AvailBridgeV1} from "src/AvailBridgeV1.sol";
+import {IAvailBridge} from "src/interfaces/IAvailBridge.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {IAvail} from "src/interfaces/IAvail.sol";
 import {VectorxMock, IVectorx} from "src/mocks/VectorxMock.sol";
@@ -19,14 +18,10 @@ contract GetProofMockScript is Script {
         vm.startBroadcast();
         VectorxMock vectorx = new VectorxMock();
         ProxyAdmin admin = new ProxyAdmin(msg.sender);
-        address impl = address(new AvailBridge());
-        AvailBridge bridge = AvailBridge(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
+        address impl = address(new AvailBridgeV1());
+        AvailBridgeV1 bridge = AvailBridgeV1(address(new TransparentUpgradeableProxy(impl, address(admin), "")));
         ERC20Mock avail = new ERC20Mock();
-        AvailBridgeOld oldBridge = new AvailBridgeOld();
-        oldBridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
         bridge.initialize(0, msg.sender, IAvail(address(avail)), msg.sender, msg.sender, IVectorx(vectorx));
-        oldBridge.setNewBridgeAddress(address(bridge));
-        bridge.setOldBridgeAddress(IOldAvailBridge(address(oldBridge)));
         avail.mint(msg.sender, 1 ether);
         bridge.sendAVAIL(bytes32(uint256(1)), 1 ether);
         console.logBytes32(bridge.isSent(0));
