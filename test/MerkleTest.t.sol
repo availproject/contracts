@@ -41,6 +41,10 @@ contract MerkleTest is Test, MurkyBase {
         view
     {
         vm.assume(leaves.length > 1 && index < leaves.length && wrongIndex != index);
+        // Include the position so repeated fuzz inputs cannot make a wrong index valid.
+        for (uint256 i = 0; i < leaves.length; ++i) {
+            leaves[i] = keccak256(abi.encode(i, leaves[i]));
+        }
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);
         bytes32[] memory proof = getProof(leaves, index);
@@ -71,6 +75,10 @@ contract MerkleTest is Test, MurkyBase {
         bytes32 wrongRoot
     ) external view {
         vm.assume(leaves.length >= 128 && index < leaves.length && wrongIndex != index);
+        // Include the position so repeated fuzz inputs cannot make a wrong index valid.
+        for (uint256 i = 0; i < leaves.length; ++i) {
+            leaves[i] = keccak256(abi.encode(i, leaves[i]));
+        }
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);
         bytes32[] memory proof = getProof(leaves, index);
@@ -107,6 +115,10 @@ contract MerkleTest is Test, MurkyBase {
             unchecked {
                 ++i;
             }
+        }
+        // Include the position so repeated fuzz inputs cannot make a wrong index valid.
+        for (uint256 i = 0; i < leaves.length; ++i) {
+            leaves[i] = keccak256(abi.encode(i, leaves[i]));
         }
         bytes32 root = getRoot(leaves);
         vm.assume(wrongRoot != root);

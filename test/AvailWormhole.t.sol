@@ -20,9 +20,9 @@ contract AvailWormholeTest is Test {
         governance = makeAddr("governance");
         minter = makeAddr("minter");
         address impl = address(new AvailWormhole());
-        address proxy = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        proxyAdmin = vm.computeCreateAddress(proxy, 1);
         avail = AvailWormhole(address(new TransparentUpgradeableProxy(impl, msg.sender, "")));
+        proxyAdmin =
+            address(uint160(uint256(vm.load(address(avail), bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1)))));
         avail.initialize(governance);
         vm.prank(governance);
         avail.grantRole(MINTER_ROLE, minter);
